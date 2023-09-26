@@ -3,11 +3,13 @@
 - [ ] ✨ Introduced New Features
 - [ ] 🔌 Plugin Updates
 - [ ] 🚑 Critical Hotfix
+- [ ] ♻️ Change or Refactor to Existing Feature
 - [ ] 🤕 Patch Fix
-- [ ] 🔒️ Security
+- [ ] 🔒️ Security Updates
 - [ ] 👷 Deploy/Build System
 - [ ] 🔊 Add Logging
 - [ ] 🧟‍♂️ Remove Dead Code
+- [ ] 📸 Capturing Uncommitted Code 
 
 ---
 
