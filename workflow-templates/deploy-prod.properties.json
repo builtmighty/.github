@@ -1,8 +1,0 @@
-{
-    "name": "Deploy to Production",
-    "description": "Octo Organization CI starter workflow.",
-    "iconName": ":rocket:",
-    "categories": [
-        "Prod"
-    ]
-}
