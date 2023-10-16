@@ -1,0 +1,293 @@
+# ======= Expected GH Actions Secrets & Vars =======
+## Org Secrets - Set in Org Github Settings
+# - SLACK_BOT_API_KEY
+# - SLACK_TEAM_ID
+# - SSH_PRIVATE_KEY
+## Repo Secrets - MUST be set per Repo in Github Repo Settings
+# - PROD_REMOTE_WEB_ROOT
+# - PROD_SSH_HOST
+# - PROD_SSH_PORT
+# - PROD_SSH_USER
+# - RC_REMOTE_WEB_ROOT
+# - RC_SSH_HOST
+# - RC_SSH_PORT
+# - RC_SSH_USER
+# - SLACK_CHANNEL_ID
+
+name: 🔒️ Production Code Validation
+env:
+  DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+  _LINTER_RULES_DIR: .github/linters
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the default branch
+  # push:
+  #   branches: $default-branch
+  pull_request:
+    branches: [main,master,production]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  code-check-prod:
+    # The type of runner that the job will run on
+    runs-on: [Large-Runner-Ubuntu]
+
+    permissions:
+      contents: write
+      packages: read
+      statuses: write
+      pull-requests: write
+      issues: write
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      ## Configuring Super Linter
+
+      # Create tmp Directory for Linter Config Files and Git Checks
+      - name: Create tmp Directory for Config Files and Git Checks
+        run: |
+          mkdir -p ${{ env._LINTER_RULES_DIR }}
+
+      # Setup Config Files for stylelint (CSS,SASS,LESS)
+      - name: 'Create .stylelintrc config file'
+        run: |
+            echo '{
+              "extends": "stylelint-config-recommended-scss",
+              "rules": {
+                "at-rule-empty-line-before": null,
+                "block-closing-brace-empty-line-before": null,
+                "block-closing-brace-newline-after": null,
+                "block-closing-brace-newline-before": null,
+                "block-closing-brace-space-before": null,
+                "block-no-empty": null,
+                "color-no-invalid-hex": null,
+                "comment-empty-line-before": null,
+                "declaration-bang-space-after": null,
+                "declaration-bang-space-before": null,
+                "declaration-block-no-duplicate-properties": null,
+                "declaration-block-no-shorthand-property-overrides": null,
+                "declaration-block-semicolon-newline-after": null,
+                "declaration-block-semicolon-space-after": null,
+                "declaration-block-semicolon-space-before": null,
+                "declaration-block-trailing-semicolon": null,
+                "declaration-colon-space-after": null,
+                "declaration-colon-space-before": null,
+                "declaration-empty-line-before": null,
+                "function-comma-newline-after": null,
+                "function-comma-space-after": null,
+                "function-comma-space-before": null,
+                "function-max-empty-lines": null,
+                "function-name-case": null,
+                "function-parentheses-newline-inside": null,
+                "function-parentheses-space-inside": null,
+                "function-whitespace-after": null,
+                "keyframe-declaration-no-important": null,
+                "media-feature-colon-space-after": null,
+                "media-feature-colon-space-before": null,
+                "media-feature-name-case": null,
+                "media-feature-parentheses-space-inside": null,
+                "media-feature-range-operator-space-after": null,
+                "media-feature-range-operator-space-before": null,
+                "media-query-list-comma-newline-after": null,
+                "media-query-list-comma-space-after": null,
+                "media-query-list-comma-space-before": null,
+                "no-descending-specificity": null,
+                "no-duplicate-selectors": null,
+                "no-empty-source": null,
+                "no-extra-semicolons": null,
+                "no-invalid-double-slash-comments": null,
+                "no-missing-end-of-source-newline": null,
+                "number-leading-zero": null,
+                "number-no-trailing-zeros": null,
+                "property-case": null,
+                "rule-empty-line-before": null,
+                "selector-attribute-brackets-space-inside": null,
+                "selector-attribute-operator-space-after": null,
+                "selector-attribute-operator-space-before": null,
+                "selector-combinator-space-after": null,
+                "selector-combinator-space-before": null,
+                "selector-descendant-combinator-no-non-space": null,
+                "selector-list-comma-newline-after": null,
+                "selector-list-comma-space-before": null,
+                "selector-max-empty-lines": null,
+                "selector-pseudo-class-case": null,
+                "selector-pseudo-class-parentheses-space-inside": null,
+                "selector-pseudo-element-case": null,
+                "selector-pseudo-element-colon-notation": null,
+                "selector-type-case": null,
+                "unit-case": null,
+                "value-list-comma-newline-after": null,
+                "value-list-comma-space-after": null,
+                "value-list-comma-space-before": null,
+                "value-list-max-empty-lines": null
+              },
+              "defaultSeverity": "warning",
+              "ignoreFiles": [
+                "**/node_modules/**",
+                "**/dist/**",
+                "**/build/**",
+                "**/vendor/**",
+                "**/wp-admin/**",
+                "**/wp-includes/**",
+                "**/wp-content/themes/twenty*"
+              ],
+              "maxWarnings": 0
+            }' > ${{ env._LINTER_RULES_DIR }}/.stylelintrc
+
+      # Setup Config File for GH Action Linter
+      - name: Create actionlint config file
+        run: |
+            echo 'self-hosted-runner:
+              # Labels of self-hosted runner in array of string
+              labels:
+                - Large-Runner-Ubuntu
+            ' > ${{ env._LINTER_RULES_DIR }}/actionlint.yaml
+
+      # Only Check for JS Fatal Syntax Errors, Remove Step or add rules to lint JS Code Styling/Structure
+      - name: Create eslintrc config file for ESLinter
+        run: |
+          echo '{
+            "parserOptions": {
+              "ecmaVersion": 13
+            },
+            env: {
+              browser: true,
+              jquery: true,
+              es2022: true,
+              node: true
+            },
+            "rules": {}
+          }' > ${{ env._LINTER_RULES_DIR }}/.eslintrc.json
+
+      # Run Super Linter ( Lints: PHP, CSS, JSON, GH Actions, JS, HTML)
+      - name: Run Super Linter
+        id: super-linter
+        uses: github/super-linter/slim@v5
+        env:
+          DEFAULT_WORKSPACE: "./wp-content/"
+          LINTER_RULES_PATH: ${{ env._LINTER_RULES_DIR }}
+          VALIDATE_ALL_CODEBASE: false
+          VALIDATE_CSS: true
+          CSS_FILE_NAME: .stylelintrc
+          VALIDATE_JAVASCRIPT_ES: true
+          VALIDATE_JSON: true
+          VALIDATE_HTML: true
+          VALIDATE_PHP: true
+          VALIDATE_PHP_BUILTIN: true
+          VALIDATE_GITHUB_ACTIONS: true
+          LOG_LEVEL: ERROR
+          CREATE_LOG_FILE: true
+          LOG_FILE: super-linter.log
+          IGNORE_GENERATED_FILES: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IGNORE_GITIGNORED_FILES: true
+          FILTER_REGEX_EXCLUDE: "(^|/)wp-(admin|includes)/|(^|/)wp-content/plugins/(akismet|twenty-)|(^|/)wp-content/themes/(twenty|twenty-)"
+          GITHUB_ACTIONS_COMMAND_ARGS: -shellcheck= -pyflakes=
+          # DEFAULT_BRANCH: main
+          # Turn off PHP_CodeSniffer, we only want to return FATAL errors and not code styling, uncomment for strict code structure checks
+          # VALIDATE_PHP_PHPCS: true
+          # Use ESLint instead so we can have tighter controls on Linting, Uncomment VALIDATE_JAVASCRIPT_STANDARD to enable default Standard JS Linting
+          # VALIDATE_JAVASCRIPT_STANDARD: true
+
+      ## On failure, let us know what happened.
+
+      # Write errors to workflow job summary
+      - name: Write errors to workflow job summary
+        if: failure()
+        run: |
+          echo "# 💩 Code Linting Failed" >> $GITHUB_STEP_SUMMARY
+          echo $GITHUB_STEP_SUMMARY
+
+      # Replace color codes with markdown styles.
+      - name: Replace ANSI color codes with Markdown-style colors
+        if: failure()
+        run: |
+          sed -i 's/\x1B\[[0-9;]*[JKmsu]//g' super-linter.log  # Remove ANSI color codes
+          sed -i 's/\[ERROR\]/[ERROR]/g' super-linter.log  # Replace [ERROR] with red
+          sed -i 's/\[WARNING\]/[WARNING]/g' super-linter.log  # Replace [WARNING] with yellow
+      
+      # Write errors to workflow job summary.
+      - name: Display linting errors
+        if: failure()
+        run: |
+          # This command will print the linting errors and warnings to the GitHub Actions workflow summary
+          echo 'You cannot merge until these issues are resolved.' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat super-linter.log | grep -E '\[ERROR\]|\[WARNING\]|PHP (Parse|Fatal) error:' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      # Write errors to Slack channel.
+      - name: Post Errors to Slack channel
+        id: slack_failed
+        if: failure()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          # Slack channel id, channel name, or user id to post message.
+          # See also: https://api.slack.com/methods/chat.postMessage#channels
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          # Write errors.
+          payload: |
+            {
+              "text": "💩 Code Linting Failed. You cannot merge until these issues are resolved. View Pull Request: ${{ github.event.pull_request.html_url }}",
+            	"blocks": [
+                {
+            			"type": "divider"
+            		},
+            		{
+            			"type": "header",
+            			"text": {
+            				"type": "plain_text",
+            				"text": "🚩 Code Linting Failed 💩",
+            				"emoji": true
+            			}
+            		},
+            		{
+            			"type": "section",
+            			"block_id": "sectionBlockWithLinkButton",
+            			"text": {
+            				"type": "mrkdwn",
+            				"text": "<!here> You cannot merge until issues are resolved."
+            			},
+            			"accessory": {
+            				"type": "button",
+            				"text": {
+            					"type": "plain_text",
+            					"text": "View Pull Request",
+            					"emoji": true
+            				},
+            				"value": "view_pull_request",
+            				"url": "${{ github.event.pull_request.html_url }}",
+            				"action_id": "button-action"
+            			}
+            		},
+            		{
+            			"type": "image",
+            			"image_url": "https://i.giphy.com/media/uprwwjptZW4Za/giphy.webp",
+            			"alt_text": "inspiration"
+            		}
+            	]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
+          GIT_REPO_URL: https://github.com/${{ github.repository }}
+
+      ## On success, let us know what happened.
+
+      # Write success message to workflow job summary
+      - name: Write success message to workflow job summary
+        if: success()
+        run: |
+          echo "# 🎉 Code Successfully Checked" >> $GITHUB_STEP_SUMMARY
+          echo "You are now clear to merge, which will trigger deployment to production." >> $GITHUB_STEP_SUMMARY
+          echo $GITHUB_STEP_SUMMARY
