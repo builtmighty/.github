@@ -3,6 +3,7 @@
 # - SLACK_BOT_API_KEY
 # - SLACK_TEAM_ID
 # - SSH_PRIVATE_KEY
+# - BOT_SIGNING_KEY
 ## Repo Secrets - MUST be set per Repo in Github Repo Settings
 # - PROD_REMOTE_WEB_ROOT
 # - PROD_SSH_HOST
@@ -75,7 +76,7 @@ jobs:
       ## Step 4: Apply the patch containing the uncommitted files from the Remote server on the Actions GH Runner server, then  and remove patch file and git-status.txt from the GH Runner server.
       ## Step 5: Commit the changes to the new "uncommitted" branch and push the new branch to the Remote Repo
       ## Step 6: Output a GH Action summary to instruct the developer how to merge these back into staging and proceed with their initial PR.
-      - name: Check for uncommitted changes
+      - name: Check for Uncommitted Changes
         env:
           UNCOMMITTED_BRANCH: hotfix/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
           GIT_REPO_URL: https://github.com/${{ github.repository }}
@@ -104,7 +105,7 @@ jobs:
           fi
 
       # Post uncommitted changes to Slack channel.
-      - name: Post to Un-committed Changes to Slack channel
+      - name: Post Un-committed Changes to Slack channel
         id: slack_failed
         if: failure()
         uses: slackapi/slack-github-action@v1.24.0
@@ -118,41 +119,36 @@ jobs:
               "text": "*🛑 Deployment Failed*\n============================\nGitHub Action build result: `${{ job.status }}`\nTriggered by: `${{ github.triggering_actor }}`\n${{ github.event.pull_request.html_url || github.event.head_commit.url }} \n\n",
               "blocks": [
                 {
-            			"type": "divider"
-            		},
-            		{
-            			"type": "header",
-            			"text": {
-            				"type": "plain_text",
-            				"text": "🛑 Deployment Failed",
-            				"emoji": true
-            			}
-            		},
-            		{
-            			"type": "image",
-            			"image_url": "https://i.giphy.com/media/P8X4lemg5Iphe/giphy.webp",
-            			"alt_text": "inspiration"
-            		},
-            		{
-            			"type": "section",
-            			"block_id": "uncommitted-changes-message",
-            			"text": {
-            				"type": "mrkdwn",
-            				"text": "*<!here> There are uncommitted changes on the staging server.*"
-            			}
-            		},
-            		{
-            			"type": "divider"
-            		},
-            		{
-            			"type": "section",
-            			"block_id": "sectionBlockOnlyMrkdwn",
-            			"text": {
-            				"type": "mrkdwn",
-            				"text": "🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🔀 *Un-commmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
-            			}
-            		}
-            	]
+                  "type": "divider"
+                },
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "🛑 Deployment Failed :sob:",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "<!here> There are *uncommitted changes* on the staging server."
+                  }
+                },
+                {
+                  "type": "image",
+                  "image_url": "https://i.giphy.com/media/P8X4lemg5Iphe/giphy.webp",
+                  "alt_text": "inspiration"
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🔀 *Un-commmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
+                  }
+                }
+              ]
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
@@ -160,7 +156,7 @@ jobs:
           GIT_REPO_URL: https://github.com/${{ github.repository }}
 
       # Deploy.
-      - name: Deploy to staging
+      - name: Deploy to Staging
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           DEPLOY_PAT: ${{ secrets.DEPLOY_WORKFLOW_PAT }}
@@ -169,8 +165,9 @@ jobs:
           ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.RC_SSH_PORT }} ${{ secrets.RC_SSH_USER }}@${{ secrets.RC_SSH_HOST }} "cd ${{ secrets.RC_REMOTE_WEB_ROOT }} && git pull https://bryanlittlefield:${{ env.DEPLOY_PAT }}@${{ env.GIT_REPO_URL }} ${{ env.DEFAULT_BRANCH }}"
 
       # Post to Slack channel.
-      - name: Post to a Slack channel
+      - name: Post Success to Slack channel
         id: slack
+        if: success()
         uses: slackapi/slack-github-action@v1.24.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -179,58 +176,39 @@ jobs:
           # For posting a rich message using Block Kit
           payload: |
             {
-              "text": "GitHub Action build result: `${{ job.status }}`\nTriggered by: `${{ github.triggering_actor }}`\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}",
+              "text": "GitHub Action Build Result: `${{ job.status }}`\nTriggered by: `${{ github.triggering_actor }}`\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}",
               "blocks": [
                 {
-            			"type": "divider"
-            		},
-            		{
-            			"type": "header",
-            			"text": {
-            				"type": "plain_text",
-            				"text": "➕ Staging Deployment Complete ✅",
-            				"emoji": true
-            			}
-            		},
-            		{
-            			"type": "image",
-            			"image_url": "https://media.giphy.com/media/3o6Mbbs879ozZ9Yic0/giphy.gif",
-            			"alt_text": "time-to-qa"
-            		},
-            		{
-            			"type": "divider"
-            		},
-            		{
-            			"type": "section",
-            			"block_id": "sectionBlockOnlyMrkdwn",
-            			"text": {
-            				"type": "mrkdwn",
-            				"text": "✅ *GitHub Action Result*: `${{ job.status }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`"
-            			}
-            		},
-            		{
-            			"type": "divider"
-            		},
-            		{
-            			"type": "section",
-            			"block_id": "sectionBlockWithLinkButton",
-            			"text": {
-            				"type": "mrkdwn",
-            				"text": "You can view the deployed pull request/commit."
-            			},
-            			"accessory": {
-            				"type": "button",
-            				"text": {
-            					"type": "plain_text",
-            					"text": "View",
-            					"emoji": true
-            				},
-            				"value": "view_pr",
-            				"url": "${{ github.event.pull_request.html_url || github.event.head_commit.url }}",
-            				"action_id": "button-action"
-            			}
-            		}
-            	]
+                  "type": "divider"
+                },
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "➕ Staging Deployment Complete ✅",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "<!here> the staging site has been deployed too."
+                  }
+                },
+                {
+                  "type": "image",
+                  "image_url": "https://media.giphy.com/media/3o6Mbbs879ozZ9Yic0/giphy.gif",
+                  "alt_text": "inspiration"
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "✅ *GitHub Action Result*: `${{ job.status }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`>`"
+                  }
+                }
+              ]
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
