@@ -17,7 +17,7 @@
 
 name: 🔨 Staging Deployment
 env:
-  DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+  DEFAULT_BRANCH: $(jq -r '.pull_request.base.ref' $GITHUB_EVENT_PATH)
   _LINTER_RULES_DIR: .github/linters
 
 # Controls when the workflow will run
