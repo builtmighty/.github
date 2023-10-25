@@ -64,7 +64,15 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.BOT_SIGNING_KEY }}" > ~/.ssh/bot
+          touch ~/.ssh/config
+          echo "Host *
+          AddKeysToAgent yes
+          IgnoreUnknown UseKeychain
+          UseKeychain yes
+          IdentityFile ~/.ssh/bot" > ~/.ssh/config
           chmod 600 ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/bot
 
       # Check for uncommitted changes
       ## This is a safety check to ensure that we don't overwrite any uncommitted changes on the server
@@ -85,11 +93,13 @@ jobs:
           if [[ -s ~/.ssh/git-status.txt ]]; then
             ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.RC_SSH_PORT }} ${{ secrets.RC_SSH_USER }}@${{ secrets.RC_SSH_HOST }} "cd ${{ secrets.RC_REMOTE_WEB_ROOT }} && git stash show -p" > uncommitted-changes.patch
             git config core.filemode false && sudo chown -R $(whoami) . && chown -R $(whoami) .
-            git config user.name github-actions && git config user.email github-actions@github.com
+            git config user.name builtmightybot && git config user.email bot@builtmighty.com 
+            git config --global gpg.format ssh && git config --global user.signingkey ~/.ssh/bot && git config --global commit.gpgsign true
             git switch ${{ env.DEFAULT_BRANCH }}
             git switch -c ${{env.UNCOMMITTED_BRANCH}}
-            git apply uncommitted-changes.patch && rm uncommitted-changes.patch & rm -rf ${{ env._LINTER_RULES_DIR }}
-            git add . && git stash push -u --keep-index -m "Safely Stashed ALL on Un-Committed changes" && git commit -m "Captured ALL on Un-Committed changes on Staging" && git push origin ${{env.UNCOMMITTED_BRANCH}}
+            git apply uncommitted-changes.patch && rm uncommitted-changes.patch & rm -rf ./git-status.txt
+            git add . && git stash push -u --keep-index -m "Safely Stashed ALL on Un-Committed changes"
+            git commit -S -m "Captured ALL on Un-Committed changes on Production" && git push origin ${{env.UNCOMMITTED_BRANCH}}
             echo "# 🙉 There are uncommitted changes on the server you are trying to deploy to." >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY # this is a blank line
             echo " We have created the following branch to capture these changes:" >> $GITHUB_STEP_SUMMARY
