@@ -73,7 +73,7 @@ jobs:
         run: |
             echo '${{ vars.STYLELINTRC }}' > ${{ env._LINTER_RULES_DIR }}/.stylelintrc.json
 
-      # Create stylelint ignore file
+      # Create stylelint ignore file. Variable can be set to a string of "empty" to disable.
       - name: Create StyleLint Ignore File
         run: |
             if [ "${{ vars.STYLELINTIGNORE }}" = "empty" ]; then
@@ -100,7 +100,11 @@ jobs:
       # Create ESLint ignore file
       - name: Create ESLint Ignore File
         run: |
-            echo '${{ vars.ESLINTIGNORE }}' > .eslintignore
+            if [ "${{ vars.ESLINTIGNORE }}" = "empty" ]; then
+              echo "No eslintignore file defined."
+            else
+              echo '${{ vars.ESLINTIGNORE }}' > .eslintignore
+            fi
 
       # Run Super Linter ( Lints: PHP, CSS, JSON, GH Actions, JS, HTML)
       - name: Run Super Linter
@@ -109,9 +113,10 @@ jobs:
         env:
           DEFAULT_WORKSPACE: "./wp-content/"
           LINTER_RULES_PATH: ${{ env._LINTER_RULES_DIR }}
-          VALIDATE_ALL_CODEBASE: false
+          VALIDATE_ALL_CODEBASE: true
           VALIDATE_CSS: true
           CSS_FILE_NAME: .stylelintrc.json
+          JAVASCRIPT_ES_CONFIG_FILE: .eslintrc.json
           VALIDATE_JAVASCRIPT_ES: true
           VALIDATE_JSON: true
           VALIDATE_PHP: true
