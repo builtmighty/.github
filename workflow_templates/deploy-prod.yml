@@ -1,34 +1,223 @@
-{
-	"blocks": [
-		{
-			"type": "divider"
-		},
-		{
-			"type": "header",
-			"text": {
-				"type": "plain_text",
-				"text": "🛑 Deployment Failed",
-				"emoji": true
-			}
-		},
-		{
-			"type": "section",
-			"text": {
-				"type": "mrkdwn",
-				"text": "<!here> There are *uncommitted changes* on the production server."
-			}
-		},
-		{
-			"type": "image",
-			"image_url": "https://i.giphy.com/media/P8X4lemg5Iphe/giphy.webp",
-			"alt_text": "inspiration"
-		},
-		{
-			"type": "section",
-			"text": {
-				"type": "mrkdwn",
-				"text": "🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🔀 *Un-commmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
-			}
-		}
-	]
-}
+# ======= Expected GH Actions Secrets & Vars =======
+## Org Secrets - Set in Org Github Settings
+# - SLACK_BOT_API_KEY
+# - SLACK_TEAM_ID
+# - SSH_PRIVATE_KEY
+# - BOT_SIGNING_KEY
+## Repo Secrets - MUST be set per Repo in Github Repo Settings
+# - PROD_REMOTE_WEB_ROOT
+# - PROD_SSH_HOST
+# - PROD_SSH_PORT
+# - PROD_SSH_USER
+# - RC_REMOTE_WEB_ROOT
+# - RC_SSH_HOST
+# - RC_SSH_PORT
+# - RC_SSH_USER
+# - SLACK_CHANNEL_ID
+
+name: 🚀 Production Deployment
+env:
+  DEFAULT_BRANCH: $(jq -r '.pull_request.base.ref' $GITHUB_EVENT_PATH)
+  _LINTER_RULES_DIR: .github/linters
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow pull request events but only for the default branch
+  pull_request:
+    branches: [main,master,production]
+    types:
+      - closed
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  deploy-stage:
+    # Only run the Job if the PR is closed AND the PR is merged
+    if: github.event.pull_request.merged == true
+    # The type of runner that the job will run on
+    runs-on: [Large-Runner-Ubuntu]
+
+    # Set permissions
+    permissions:
+      contents: write
+      packages: read
+      statuses: write
+      pull-requests: write
+      issues: write
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # Setup Deployment SSH Key
+      - name: Setup Deployment SSH Key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.BOT_SIGNING_KEY }}" > ~/.ssh/bot
+          touch ~/.ssh/config
+          echo "Host *
+          AddKeysToAgent yes
+          IgnoreUnknown UseKeychain
+          UseKeychain yes
+          IdentityFile ~/.ssh/bot" > ~/.ssh/config
+          chmod 600 ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/bot
+
+      # Check for uncommitted changes
+      ## This is a safety check to ensure that we don't overwrite any uncommitted changes on the server
+      ## ⛑️ If there are uncommitted changes we perform the following steps:
+      ## Step 1: Login to the remote server and create a patch file from all uncommitted changes (tracked + un-tracked). Download the patch file locally on the GH Runner server
+      ## Step 2: Do not track filemode in Git and reset all file permissions within the GH Runners Working Directory.
+      ## Step 2: Set the default github-actions user as the committer
+      ## Step 3: Switch to the default base branch and create a new "UNCOMMITTED_BRANCH" off the default base branch to capture these changes.
+      ## Step 4: Apply the patch containing the uncommitted files from the Remote server on the Actions GH Runner server, then  and remove patch file and git-status.txt from the GH Runner server.
+      ## Step 5: Commit the changes to the new "uncommitted" branch and push the new branch to the Remote Repo
+      ## Step 6: Output a GH Action summary to instruct the developer how to merge these back into staging and proceed with their initial PR.
+      - name: Check for Uncommitted Changes
+        env:
+          UNCOMMITTED_BRANCH: hotfix/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
+          GIT_REPO_URL: https://github.com/${{ github.repository }}
+        run: |
+          ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "cd ${{ secrets.PROD_REMOTE_WEB_ROOT }} && git status -s" > ~/.ssh/git-status.txt
+          if [[ -s ~/.ssh/git-status.txt ]]; then
+            ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "cd ${{ secrets.PROD_REMOTE_WEB_ROOT }} && git stash show -p" > uncommitted-changes.patch
+            git config core.filemode false && sudo chown -R $(whoami) . && chown -R $(whoami) .
+            git config user.name builtmightybot && git config user.email bot@builtmighty.com 
+            git config --global gpg.format ssh && git config --global user.signingkey ~/.ssh/bot && git config --global commit.gpgsign true
+            git switch ${{ env.DEFAULT_BRANCH }}
+            git switch -c ${{env.UNCOMMITTED_BRANCH}}
+            git apply uncommitted-changes.patch && rm uncommitted-changes.patch & rm -rf ./git-status.txt
+            git add . && git stash push -u --keep-index -m "Safely Stashed ALL on Un-Committed changes"
+            git commit -S -m "Captured ALL on Un-Committed changes on Production" && git push origin ${{env.UNCOMMITTED_BRANCH}}
+            echo "# 🙉 There are uncommitted changes on the server you are trying to deploy to." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY # this is a blank line
+            echo " We have created the following branch to capture these changes:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY # this is a blank line
+            echo "___" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY # this is a blank line
+            echo "${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}" >> $GITHUB_STEP_SUMMARY
+            echo "___" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY # this is a blank line
+            echo "❗️ Please follow up by reviewing these changes and merging them back upstream to the ${{ env.DEFAULT_BRANCH }} branch via a PR: ${{ env.GIT_REPO_URL }}/compare/${{ env.DEFAULT_BRANCH }}...${{env.UNCOMMITTED_BRANCH}}?expand=1." >> $GITHUB_STEP_SUMMARY
+            echo "> 🛑 Aborting deployment until these changes have been merged back into the default base branch." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+      # Post uncommitted changes to Slack channel.
+      - name: Post Un-committed Changes to Slack channel
+        id: slack_failed
+        if: failure()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          # Slack channel id, channel name, or user id to post message.
+          # See also: https://api.slack.com/methods/chat.postMessage#channels
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          # For posting a rich message using Block Kit
+          payload: |
+            {
+              "text": "*🛑 Deployment Failed*\n============================\nGitHub Action build result: `${{ job.status }}`\nTriggered by: `${{ github.triggering_actor }}`\n${{ github.event.pull_request.html_url || github.event.head_commit.url }} \n\n",
+              "blocks": [
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "🛑 Deployment Failed :sob:",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "<!here> There are *uncommitted changes* on the production server."
+                  }
+                },
+                {
+                  "type": "image",
+                  "image_url": "https://i.giphy.com/media/P7JmDW7IkB7TW/giphy.webp",
+                  "alt_text": "inspiration"
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🔀 *Un-commmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
+          UNCOMMITTED_BRANCH: hotfix/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
+          GIT_REPO_URL: https://github.com/${{ github.repository }}
+
+      # Deploy.
+      - name: Deploy to Staging
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          DEPLOY_PAT: ${{ secrets.DEPLOY_WORKFLOW_PAT }}
+          GIT_REPO_URL: github.com/${{ github.repository }}
+        run: |
+          ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "cd ${{ secrets.PROD_REMOTE_WEB_ROOT }} && git pull https://bryanlittlefield:${{ env.DEPLOY_PAT }}@${{ env.GIT_REPO_URL }} ${{ env.DEFAULT_BRANCH }}"
+
+      # Post to Slack channel.
+      - name: Post Success to Slack channel
+        id: slack
+        if: success()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          # Slack channel id, channel name, or user id to post message.
+          # See also: https://api.slack.com/methods/chat.postMessage#channels
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          # For posting a rich message using Block Kit
+          payload: |
+            {
+              "text": "🚀 Production Deployment ✅: `${{ job.status }}`\nTriggered by: `${{ github.triggering_actor }}`\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}",
+              "blocks": [
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "🚀 Production Deployment Complete ✅",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "<!here> the production site is now live with the latest release candidate!"
+                  }
+                },
+                {
+                  "type": "image",
+                  "image_url": "https://i.giphy.com/media/IwAZ6dvvvaTtdI8SD5/giphy.webp",
+                  "alt_text": "inspiration"
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "✅ *GitHub Action Result*: `${{ job.status }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
