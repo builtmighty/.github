@@ -215,7 +215,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "✅ *GitHub Action Result*: `${{ job.status }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`>`"
+                    "text": "✅ *GitHub Action Result*: `${{ job.status }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`"
                   }
                 }
               ]
