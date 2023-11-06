@@ -75,7 +75,11 @@ jobs:
       # Create stylelint ignore file
       - name: Create StyleLint Ignore File
         run: |
-            echo '${{ vars.STYLELINTIGNORE }}' > .stylelintignore
+            if [ "${{ vars.STYLELINTIGNORE }}" = "empty" ]; then
+              echo "No stylelintignore file defined."
+            else
+              echo '${{ vars.STYLELINTIGNORE }}' > .stylelintignore
+            fi
 
       # Setup Config File for GH Action Linter
       - name: Create ActionLint Config File
@@ -95,7 +99,11 @@ jobs:
       # Create ESLint ignore file
       - name: Create ESLint Ignore File
         run: |
-            echo '${{ vars.ESLINTIGNORE }}' > .eslintignore
+            if [ "${{ vars.ESLINTIGNORE }}" = "empty" ]; then
+              echo "No eslintignore file defined."
+            else
+              echo '${{ vars.ESLINTIGNORE }}' > .eslintignore
+            fi
 
       # Run Super Linter ( Lints: PHP, CSS, JSON, GH Actions, JS, HTML)
       - name: Run Super Linter
