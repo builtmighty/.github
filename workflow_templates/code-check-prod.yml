@@ -18,7 +18,6 @@
 # - STYLELINTRC
 # - STYLELINTIGNORE
 # - ESLINTRC
-# - ESLINTIGNORE
 # - FILTER_REGEX_EXCLUDE
 
 name: 🔒️ Production Code Validation
