@@ -14,6 +14,11 @@
 # - RC_SSH_PORT
 # - RC_SSH_USER
 # - SLACK_CHANNEL_ID
+## Linting Settings - Set at the org level, but can be overridden.
+# - STYLELINTRC
+# - STYLELINTIGNORE
+# - ESLINTRC
+# - FILTER_REGEX_EXCLUDE
 
 name: 🧑‍💻 Release Candidate Code Validation
 env:
