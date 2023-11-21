@@ -14,11 +14,6 @@
 # - RC_SSH_PORT
 # - RC_SSH_USER
 # - SLACK_CHANNEL_ID
-## Linting Settings - Set at the org level, but can be overridden.
-# - STYLELINTRC
-# - STYLELINTIGNORE
-# - ESLINTRC
-# - FILTER_REGEX_EXCLUDE
 
 name: 🧑‍💻 Release Candidate Code Validation
 env:
@@ -75,11 +70,7 @@ jobs:
       # Create stylelint ignore file
       - name: Create StyleLint Ignore File
         run: |
-            if [ "${{ vars.STYLELINTIGNORE }}" = "empty" ]; then
-              echo "No stylelintignore file defined."
-            else
-              echo '${{ vars.STYLELINTIGNORE }}' > .stylelintignore
-            fi
+            echo '${{ vars.STYLELINTIGNORE }}' > .stylelintignore
 
       # Setup Config File for GH Action Linter
       - name: Create ActionLint Config File
@@ -99,11 +90,7 @@ jobs:
       # Create ESLint ignore file
       - name: Create ESLint Ignore File
         run: |
-            if [ "${{ vars.ESLINTIGNORE }}" = "empty" ]; then
-              echo "No eslintignore file defined."
-            else
-              echo '${{ vars.ESLINTIGNORE }}' > .eslintignore
-            fi
+            echo '${{ vars.ESLINTIGNORE }}' > .eslintignore
 
       # Run Super Linter ( Lints: PHP, CSS, JSON, GH Actions, JS, HTML)
       - name: Run Super Linter
