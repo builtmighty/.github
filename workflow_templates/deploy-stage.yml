@@ -172,7 +172,7 @@ jobs:
           DEPLOY_PAT: ${{ secrets.DEPLOY_WORKFLOW_PAT }}
           GIT_REPO_URL: github.com/${{ github.repository }}
         run: |
-          ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.RC_SSH_PORT }} ${{ secrets.RC_SSH_USER }}@${{ secrets.RC_SSH_HOST }} "cd ${{ secrets.RC_REMOTE_WEB_ROOT }} && git pull https://${{ env.DEPLOY_USER }}:${{ env.DEPLOY_PAT }}@${{ env.GIT_REPO_URL }} ${{ env.DEFAULT_BRANCH }}"
+          ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.RC_SSH_PORT }} ${{ secrets.RC_SSH_USER }}@${{ secrets.RC_SSH_HOST }} "cd ${{ secrets.RC_REMOTE_WEB_ROOT }} && git pull https://${{ vars.DEPLOY_USER }}:${{ env.DEPLOY_PAT }}@${{ env.GIT_REPO_URL }} ${{ env.DEFAULT_BRANCH }}"
 
       # Post to Slack channel.
       - name: Post Success to Slack channel
