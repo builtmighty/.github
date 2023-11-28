@@ -191,7 +191,7 @@ jobs:
             			"type": "section",
             			"text": {
             				"type": "mrkdwn",
-            				"text": "<!here> You cannot merge into the *main branch* until issues are resolved."
+            				"text": "You cannot merge into the *main branch* until issues are resolved."
             			}
             		},
             		{
@@ -260,7 +260,7 @@ jobs:
             			"type": "section",
             			"text": {
             				"type": "mrkdwn",
-            				"text": "<!here> You're ready to merge into the *main branch*. Let's go!"
+            				"text": "You're ready to merge into the *main branch*. Let's go!"
             			}
             		},
             		{
