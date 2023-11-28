@@ -143,7 +143,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "<!here> There are *uncommitted changes* on the staging server."
+                    "text": "There are *uncommitted changes* on the staging server."
                   }
                 },
                 {
@@ -203,7 +203,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "<!here> the staging site has been deployed too."
+                    "text": "The staging site has been deployed too."
                   }
                 },
                 {
