@@ -142,7 +142,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "<!here> There are *uncommitted changes* on the production server."
+                    "text": "There are *uncommitted changes* on the production server."
                   }
                 },
                 {
@@ -202,7 +202,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "<!here> the production site is now live with the latest release candidate!"
+                    "text": "The production site is now live with the latest release candidate!"
                   }
                 },
                 {
