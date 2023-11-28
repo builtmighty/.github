@@ -178,7 +178,7 @@ jobs:
             			"type": "section",
             			"text": {
             				"type": "mrkdwn",
-            				"text": "<!here> You cannot merge into the *release candidate* until issues are resolved."
+            				"text": "You cannot merge into the *release candidate* until issues are resolved."
             			}
             		},
             		{
@@ -247,7 +247,7 @@ jobs:
             			"type": "section",
             			"text": {
             				"type": "mrkdwn",
-            				"text": "<!here> You're ready to merge into the *release candidate*. Yay!"
+            				"text": "You're ready to merge into the *release candidate*. Yay!"
             			}
             		},
             		{
