@@ -134,7 +134,7 @@ jobs:
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "🛑 Deployment Failed :sob:",
+                    "text": "${{ vars.DEP_PROD_FAIL_HEAD }}",
                     "emoji": true
                   }
                 },
@@ -142,12 +142,12 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "There are *uncommitted changes* on the production server."
+                    "text": "${{ vars.DEP_PROD_FAIL_BODY }}"
                   }
                 },
                 {
                   "type": "image",
-                  "image_url": "https://i.giphy.com/media/P7JmDW7IkB7TW/giphy.webp",
+                  "image_url": "${{ vars.DEP_PROD_FAIL_IMAGE }}",
                   "alt_text": "inspiration"
                 },
                 {
@@ -194,7 +194,7 @@ jobs:
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "🚀 Production Deployment Complete ✅",
+                    "text": "${{ vars.DEP_PROD_SUCC_HEAD }}",
                     "emoji": true
                   }
                 },
@@ -202,12 +202,12 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "The production site is now live with the latest release candidate!"
+                    "text": "${{ vars.DEP_PROD_SUCC_BODY }}"
                   }
                 },
                 {
                   "type": "image",
-                  "image_url": "https://i.giphy.com/media/IwAZ6dvvvaTtdI8SD5/giphy.webp",
+                  "image_url": "${{ vars.DEP_PROD_SUCC_IMAGE }}",
                   "alt_text": "inspiration"
                 },
                 {
