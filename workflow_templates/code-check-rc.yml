@@ -170,7 +170,7 @@ jobs:
             			"type": "header",
             			"text": {
             				"type": "plain_text",
-            				"text": "🚩 Code Linting Failed 💩",
+            				"text": "${{ vars.CC_RC_FAIL_HEAD }}",
             				"emoji": true
             			}
             		},
@@ -178,12 +178,12 @@ jobs:
             			"type": "section",
             			"text": {
             				"type": "mrkdwn",
-            				"text": "You cannot merge into the *release candidate* until issues are resolved."
+            				"text": "${{ vars.CC_RC_FAIL_BODY }}"
             			}
             		},
             		{
             			"type": "image",
-            			"image_url": "https://i.giphy.com/media/uprwwjptZW4Za/giphy.webp",
+            			"image_url": "${{ vars.CC_RC_FAIL_IMAGE }}",
             			"alt_text": "inspiration"
             		},
             		{
@@ -239,7 +239,7 @@ jobs:
             			"type": "header",
             			"text": {
             				"type": "plain_text",
-            				"text": "✅ Success! Time to Merge! 🔀",
+            				"text": "${{ vars.CC_RC_SUCC_HEAD }}",
             				"emoji": true
             			}
             		},
@@ -247,12 +247,12 @@ jobs:
             			"type": "section",
             			"text": {
             				"type": "mrkdwn",
-            				"text": "You're ready to merge into the *release candidate*. Yay!"
+            				"text": "${{ vars.CC_RC_SUCC_BODY }}"
             			}
             		},
             		{
             			"type": "image",
-            			"image_url": "https://i.giphy.com/media/3ofSBnyj5NUxiI5eda/200.webp",
+            			"image_url": "${{ vars.CC_RC_SUCC_IMAGE }}",
             			"alt_text": "inspiration"
             		},
             		{
