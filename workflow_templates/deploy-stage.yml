@@ -135,7 +135,7 @@ jobs:
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "🛑 Deployment Failed :sob:",
+                    "text": "${{ vars.DEP_RC_FAIL_HEAD }}",
                     "emoji": true
                   }
                 },
@@ -143,12 +143,12 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "There are *uncommitted changes* on the staging server."
+                    "text": "${{ vars.DEP_RC_FAIL_BODY }}"
                   }
                 },
                 {
                   "type": "image",
-                  "image_url": "https://i.giphy.com/media/P8X4lemg5Iphe/giphy.webp",
+                  "image_url": "${{ vars.DEP_RC_FAIL_IMAGE }}",
                   "alt_text": "inspiration"
                 },
                 {
@@ -195,7 +195,7 @@ jobs:
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "➕ Staging Deployment Complete ✅",
+                    "text": "${{ vars.DEP_RC_SUCC_HEAD }}",
                     "emoji": true
                   }
                 },
@@ -203,12 +203,12 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "The staging site has been deployed too."
+                    "text": "${{ vars.DEP_RC_SUCC_BODY }}"
                   }
                 },
                 {
                   "type": "image",
-                  "image_url": "https://media.giphy.com/media/3o6Mbbs879ozZ9Yic0/giphy.gif",
+                  "image_url": "${{ vars.DEP_RC_SUCC_IMAGE }}",
                   "alt_text": "inspiration"
                 },
                 {
