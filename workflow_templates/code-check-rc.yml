@@ -17,7 +17,7 @@
 
 name: 🧑‍💻 Release Candidate Code Validation
 env:
-  DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+  DEFAULT_BRANCH: ${{ github.base_ref }}
   _LINTER_RULES_DIR: .github/linters
 
 # Controls when the workflow will run
