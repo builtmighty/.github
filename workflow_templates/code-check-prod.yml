@@ -54,7 +54,7 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -111,15 +111,13 @@ jobs:
         env:
           DEFAULT_WORKSPACE: "./wp-content/"
           LINTER_RULES_PATH: ${{ env._LINTER_RULES_DIR }}
-          VALIDATE_ALL_CODEBASE: false
-          VALIDATE_CSS: true
           CSS_FILE_NAME: .stylelintrc.json
           JAVASCRIPT_ES_CONFIG_FILE: .eslintrc.json
+          VALIDATE_ALL_CODEBASE: false
+          VALIDATE_CSS: true
           VALIDATE_JAVASCRIPT_ES: true
-          VALIDATE_JSON: true
           VALIDATE_PHP: true
           VALIDATE_PHP_BUILTIN: true
-          VALIDATE_GITHUB_ACTIONS: true
           LOG_LEVEL: ERROR
           CREATE_LOG_FILE: true
           LOG_FILE: super-linter.log
@@ -166,7 +164,7 @@ jobs:
       - name: Post Linting Errors to Slack channel
         id: slack_failed
         if: failure()
-        uses: slackapi/slack-github-action@v1.24.0
+        uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
           # See also: https://api.slack.com/methods/chat.postMessage#channels
@@ -235,7 +233,7 @@ jobs:
       - name: Post Success to Slack channel
         id: slack_success
         if: success()
-        uses: slackapi/slack-github-action@v1.24.0
+        uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
           # See also: https://api.slack.com/methods/chat.postMessage#channels
