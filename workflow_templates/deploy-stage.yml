@@ -91,15 +91,15 @@ jobs:
         run: |
           ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.RC_SSH_PORT }} ${{ secrets.RC_SSH_USER }}@${{ secrets.RC_SSH_HOST }} "cd ${{ secrets.RC_REMOTE_WEB_ROOT }} && git status -s" > ~/.ssh/git-status.txt
           if [[ -s ~/.ssh/git-status.txt ]]; then
-            ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.RC_SSH_PORT }} ${{ secrets.RC_SSH_USER }}@${{ secrets.RC_SSH_HOST }} "cd ${{ secrets.RC_REMOTE_WEB_ROOT }} && git stash show -p" > uncommitted-changes.patch
+            ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.RC_SSH_PORT }} ${{ secrets.RC_SSH_USER }}@${{ secrets.RC_SSH_HOST }} "cd ${{ secrets.RC_REMOTE_WEB_ROOT }} && git stash && git stash show -p" > uncommitted-changes.patch
             git config core.filemode false && sudo chown -R $(whoami) . && chown -R $(whoami) .
             git config user.name builtmightybot && git config user.email bot@builtmighty.com 
             git config --global gpg.format ssh && git config --global user.signingkey ~/.ssh/bot && git config --global commit.gpgsign true
             git switch ${{ env.DEFAULT_BRANCH }}
             git switch -c ${{env.UNCOMMITTED_BRANCH}}
             git apply uncommitted-changes.patch && rm uncommitted-changes.patch & rm -rf ./git-status.txt
-            git add . && git stash push -u --keep-index -m "Safely Stashed ALL on Un-Committed changes"
-            git commit -S -m "Captured ALL on Un-Committed changes on Production" && git push origin ${{env.UNCOMMITTED_BRANCH}}
+            git add . && git stash push -u --keep-index -m "Safely Stashed ALL UnCommitted Code"
+            git commit -S -m "🚨Captured ALL Uncommitted Code on Staging" && git push origin ${{env.UNCOMMITTED_BRANCH}}
             echo "# 🙉 There are uncommitted changes on the server you are trying to deploy to." >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY # this is a blank line
             echo " We have created the following branch to capture these changes:" >> $GITHUB_STEP_SUMMARY
