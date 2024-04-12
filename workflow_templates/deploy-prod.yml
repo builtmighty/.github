@@ -85,7 +85,7 @@ jobs:
       ## Step 6: Output a GH Action summary to instruct the developer how to merge these back into staging and proceed with their initial PR.
       - name: Check for Uncommitted Changes
         env:
-          UNCOMMITTED_BRANCH: hotfix/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
+          UNCOMMITTED_BRANCH: hotfix/production/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
           GIT_REPO_URL: https://github.com/${{ github.repository }}
         run: |
           ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "cd ${{ secrets.PROD_REMOTE_WEB_ROOT }} && git status -s" > ~/.ssh/git-status.txt
@@ -161,7 +161,7 @@ jobs:
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
-          UNCOMMITTED_BRANCH: hotfix/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
+          UNCOMMITTED_BRANCH: hotfix/production/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
           GIT_REPO_URL: https://github.com/${{ github.repository }}
 
       # Deploy.
