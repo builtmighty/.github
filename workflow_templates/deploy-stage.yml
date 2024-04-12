@@ -86,7 +86,7 @@ jobs:
       ## Step 6: Output a GH Action summary to instruct the developer how to merge these back into staging and proceed with their initial PR.
       - name: Check for Uncommitted Changes
         env:
-          UNCOMMITTED_BRANCH: hotfix/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
+          UNCOMMITTED_BRANCH: hotfix/staging/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
           GIT_REPO_URL: https://github.com/${{ github.repository }}
         run: |
           ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.RC_SSH_PORT }} ${{ secrets.RC_SSH_USER }}@${{ secrets.RC_SSH_HOST }} "cd ${{ secrets.RC_REMOTE_WEB_ROOT }} && git status -s" > ~/.ssh/git-status.txt
@@ -155,14 +155,14 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🔀 *Un-commmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
+                    "text": "🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🔀 *Un-commmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.}}|${{env.}}>`"
                   }
                 }
               ]
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
-          UNCOMMITTED_BRANCH: hotfix/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
+          UNCOMMITTED_BRANCH: hotfix/staging/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
           GIT_REPO_URL: https://github.com/${{ github.repository }}
 
       # Deploy.
