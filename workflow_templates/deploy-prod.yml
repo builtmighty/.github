@@ -96,7 +96,7 @@ jobs:
             git config --global gpg.format ssh && git config --global user.signingkey ~/.ssh/bot && git config --global commit.gpgsign true
             git switch ${{ env.DEFAULT_BRANCH }}
             git switch -c ${{env.UNCOMMITTED_BRANCH}}
-            git apply uncommitted-changes.patch && rm uncommitted-changes.patch & rm -rf ./git-status.txt
+            git apply uncommitted-changes.patch && rm uncommitted-changes.patch & rm -rf ~/.ssh/git-status.txt
             git add . && git stash push -u --keep-index -m "Safely Stashed ALL UnCommitted Code"
             git commit -S -m "🚨 Captured ALL Uncommitted Code on Production" && git push origin ${{env.UNCOMMITTED_BRANCH}}
             echo "# 🙉 There are uncommitted changes on the server you are trying to deploy to." >> $GITHUB_STEP_SUMMARY
