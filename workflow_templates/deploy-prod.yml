@@ -90,7 +90,7 @@ jobs:
         run: |
           ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "cd ${{ secrets.PROD_REMOTE_WEB_ROOT }} && git status -s" > ~/.ssh/git-status.txt
           if [[ -s ~/.ssh/git-status.txt ]]; then
-            ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "cd ${{ secrets.PROD_REMOTE_WEB_ROOT }} && git stash && git stash show -p" > uncommitted-changes.patch
+            ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "cd ${{ secrets.PROD_REMOTE_WEB_ROOT }} && git stash show -p" > uncommitted-changes.patch
             git config core.filemode false && sudo chown -R $(whoami) . && chown -R $(whoami) .
             git config user.name builtmightybot && git config user.email bot@builtmighty.com 
             git config --global gpg.format ssh && git config --global user.signingkey ~/.ssh/bot && git config --global commit.gpgsign true
