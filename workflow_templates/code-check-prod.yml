@@ -31,7 +31,6 @@ on:
   # push:
   #   branches: $default-branch
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
     branches: [main,master,production]
 
   # Allows you to run this workflow manually from the Actions tab
@@ -43,7 +42,6 @@ jobs:
   code-check-prod:
     # The type of runner that the job will run on
     runs-on: [Large-Runner-Ubuntu]
-    if: github.event.pull_request.draft == false
     permissions:
       contents: write
       packages: read
