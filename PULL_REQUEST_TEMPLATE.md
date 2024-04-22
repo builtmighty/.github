@@ -14,13 +14,12 @@
 ---
 
 ## 🔎 Overview 
-* **What is the current behavior?** (You can also link to an open Jira issue here)
+* **What is the current issue or behavior?** _(You can link to an open Jira issue here...)_
 
-* **What is the new behavior (if this is a feature change)?**
+* **What is the solution or new behavior?** _(If this is a a feature change...)_
 
-* ** 📸 Screenshots (if appropriate):
+* 📸 **Screenshots** _(If Applicable)_
 > Pro Tip: You can copy and paste images directly into GitHub's WYSIWYG
-> ![Example Screenshot](https://myoctocat.com/assets/images/base-octocat.svg)
 
 ---
 
