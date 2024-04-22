@@ -14,7 +14,7 @@
 ---
 
 ## 🔎 Overview 
-###What is the current issue or behavior? _(You can link to an open Jira issue here...)_###
+### What is the current issue or behavior? _(You can link to an open Jira issue here...)_
 * [ISS-00](https://builtmighty.atlassian.net/browse/ISS-00)
 
 * **What is the solution or new behavior?** _(If this is a a feature change...)_
