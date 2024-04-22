@@ -18,9 +18,9 @@
 
 * **What is the new behavior (if this is a feature change)?**
 
->> ### 📸 Screenshots (if appropriate):
+* ** 📸 Screenshots (if appropriate):
 > Pro Tip: You can copy and paste images directly into GitHub's WYSIWYG
->> ![Example Screenshot](https://myoctocat.com/assets/images/base-octocat.svg)
+> ![Example Screenshot](https://myoctocat.com/assets/images/base-octocat.svg)
 
 ---
 
