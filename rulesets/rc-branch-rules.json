@@ -1,13 +1,16 @@
 {
-  "id": 129611,
+  "id": 632055,
   "name": "RC Branch Rules",
   "target": "branch",
   "source_type": "Repository",
+  "source": "builtmighty/gitflow",
   "enforcement": "active",
   "conditions": {
     "ref_name": {
       "exclude": [
-        "refs/heads/*"
+        "refs/heads/*",
+        "refs/heads/hotfix/production*",
+        "refs/heads/hotfix/staging*"
       ],
       "include": [
         "refs/heads/rc/*"
@@ -34,7 +37,7 @@
     {
       "type": "required_status_checks",
       "parameters": {
-        "strict_required_status_checks_policy": true,
+        "strict_required_status_checks_policy": false,
         "required_status_checks": [
           {
             "context": "code-check-stage",

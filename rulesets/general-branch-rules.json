@@ -1,8 +1,9 @@
 {
-  "id": 101700,
+  "id": 632054,
   "name": "General Branch Rules",
   "target": "branch",
   "source_type": "Repository",
+  "source": "builtmighty/gitflow",
   "enforcement": "active",
   "conditions": {
     "ref_name": {

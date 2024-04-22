@@ -1,14 +1,17 @@
 {
-  "id": 101699,
+  "id": 632053,
   "name": "Default Branch Rules",
   "target": "branch",
   "source_type": "Repository",
+  "source": "builtmighty/gitflow",
   "enforcement": "active",
   "conditions": {
     "ref_name": {
       "exclude": [
         "refs/heads/feature/*",
-        "refs/heads/rc/*"
+        "refs/heads/rc/*",
+        "refs/heads/hotfix/production*",
+        "refs/heads/hotfix/staging*"
       ],
       "include": [
         "~DEFAULT_BRANCH"
@@ -31,6 +34,18 @@
     },
     {
       "type": "required_signatures"
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": false,
+        "required_status_checks": [
+          {
+            "context": "code-check-prod",
+            "integration_id": 15368
+          }
+        ]
+      }
     }
   ],
   "bypass_actors": [
