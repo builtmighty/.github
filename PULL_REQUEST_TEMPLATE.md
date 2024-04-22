@@ -17,10 +17,10 @@
 ### What is the current issue or behavior? _(You can link to an open Jira issue here...)_
 * [ISS-00](https://builtmighty.atlassian.net/browse/ISS-00)
 
-* **What is the solution or new behavior?** _(If this is a a feature change...)_
+### What is the solution or new behavior? _(If this is a a feature change...)_
 * Describe, with details, your solution.
   
-* 📸 **Screenshots** _(If Applicable)_
+### 📸 Screenshots _(If Applicable)_
 > Pro Tip: You can copy and paste images directly into GitHub's WYSIWYG
 
 
