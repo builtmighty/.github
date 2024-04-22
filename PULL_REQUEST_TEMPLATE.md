@@ -14,11 +14,9 @@
 ---
 
 ## 🔎 Overview 
-* **What is the current behavior?** (You can also link to an open issue here)
+* **What is the current behavior?** (You can also link to an open Jira issue here)
 
 * **What is the new behavior (if this is a feature change)?**
-
-* **Teamwork Task Link:** [Task Name Here](https://builtmighty.teamwork.com)
 
 >> ### 📸 Screenshots (if appropriate):
 > Pro Tip: You can copy and paste images directly into GitHub's WYSIWYG
