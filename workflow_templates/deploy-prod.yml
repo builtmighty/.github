@@ -73,45 +73,64 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           chmod 600 ~/.ssh/bot
 
-      # Check for uncommitted changes
-      ## This is a safety check to ensure that we don't overwrite any uncommitted changes on the server
-      ## ⛑️ If there are uncommitted changes we perform the following steps:
-      ## Step 1: Login to the remote server and create a patch file from all uncommitted changes (tracked + un-tracked). Download the patch file locally on the GH Runner server
-      ## Step 2: Do not track filemode in Git and reset all file permissions within the GH Runners Working Directory.
-      ## Step 2: Set the default github-actions user as the committer
-      ## Step 3: Switch to the default base branch and create a new "UNCOMMITTED_BRANCH" off the default base branch to capture these changes.
-      ## Step 4: Apply the patch containing the uncommitted files from the Remote server on the Actions GH Runner server, then  and remove patch file and git-status.txt from the GH Runner server.
-      ## Step 5: Commit the changes to the new "uncommitted" branch and push the new branch to the Remote Repo
-      ## Step 6: Output a GH Action summary to instruct the developer how to merge these back into staging and proceed with their initial PR.
-      - name: Check for Uncommitted Changes
+      # Check for uncommitted changes.
+      - name: Check for Uncommitted Code on Production
+        run: |
+          ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "cd ${{ secrets.PROD_REMOTE_WEB_ROOT }} && git status -s" > ~/.ssh/git-status.txt
+          if [[ -s ~/.ssh/git-status.txt ]]; then
+            exit 1
+          fi
+        id: check_uncommitted
+
+      # Capture uncommitted code and download patch.
+      - name: Capture Uncommitted Code
+        if: ${{ failure() && steps.check_uncommitted.outcome == 'failure' }}
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
+            cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
+            git diff > uncommitted_changes.patch
+          "
+          scp -i ~/.ssh/id_rsa -P ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}:${{ secrets.PROD_REMOTE_WEB_ROOT }}/uncommitted_changes.patch .
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
+            cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
+            rm -rf uncommitted_changes.patch
+          "
+
+      # Apply Patch and commit.
+      - name: Apply Patch and Commit
+        if: ${{ failure() && steps.check_uncommitted.outcome == 'failure' }}
         env:
           UNCOMMITTED_BRANCH: hotfix/production/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
           GIT_REPO_URL: https://github.com/${{ github.repository }}
         run: |
-          ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "cd ${{ secrets.PROD_REMOTE_WEB_ROOT }} && git status -s" > ~/.ssh/git-status.txt
-          if [[ -s ~/.ssh/git-status.txt ]]; then
-            ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "cd ${{ secrets.PROD_REMOTE_WEB_ROOT }} && git stash show -p" > uncommitted-changes.patch
-            git config core.filemode false && sudo chown -R $(whoami) . && chown -R $(whoami) .
-            git config user.name builtmightybot && git config user.email bot@builtmighty.com 
-            git config --global gpg.format ssh && git config --global user.signingkey ~/.ssh/bot && git config --global commit.gpgsign true
-            git switch ${{ env.DEFAULT_BRANCH }}
-            git switch -c ${{env.UNCOMMITTED_BRANCH}}
-            git apply uncommitted-changes.patch && rm uncommitted-changes.patch & rm -rf ~/.ssh/git-status.txt
-            git add . && git stash push -u --keep-index -m "Safely Stashed ALL UnCommitted Code"
-            git commit -S -m "🚨 Captured ALL Uncommitted Code on Production" && git push origin ${{env.UNCOMMITTED_BRANCH}}
-            echo "# 🙉 There are uncommitted changes on the server you are trying to deploy to." >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY # this is a blank line
-            echo " We have created the following branch to capture these changes:" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY # this is a blank line
-            echo "___" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY # this is a blank line
-            echo "${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}" >> $GITHUB_STEP_SUMMARY
-            echo "___" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY # this is a blank line
-            echo "❗️ Please follow up by reviewing these changes and merging them back upstream to the ${{ env.DEFAULT_BRANCH }} branch via a PR: ${{ env.GIT_REPO_URL }}/compare/${{ env.DEFAULT_BRANCH }}...${{env.UNCOMMITTED_BRANCH}}?expand=1." >> $GITHUB_STEP_SUMMARY
-            echo "> 🛑 Aborting deployment until these changes have been merged back into the default base branch." >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
+          git apply uncommitted_changes.patch
+          git config core.filemode false && sudo chown -R $(whoami) . && chown -R $(whoami) .
+          git config --global gpg.format ssh
+          git config --global user.signingkey ~/.ssh/bot
+          git config --global commit.gpgsign true
+          git config user.name "builtmightybot"
+          git config user.email "bot@builtmighty.com"
+          git checkout -b ${{ env.UNCOMMITTED_BRANCH }}
+          rm -rf uncommitted_changes.patch
+          git add .
+          git commit -S -m "🚨 Captured ALL Uncommitted Code on Production"
+          git push origin ${{ env.UNCOMMITTED_BRANCH }}
+
+      # Pull in and force hotfix branch as active on production.
+      - name: Pull in and force hotfix branch to production
+        if: ${{ failure() && steps.check_uncommitted.outcome == 'failure' }}
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          DEPLOY_PAT: ${{ secrets.DEPLOY_WORKFLOW_PAT }}
+          GIT_REPO_URL: github.com/${{ github.repository }}
+          UNCOMMITTED_BRANCH: hotfix/production/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
+        run: |
+          ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
+            cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
+            git reset --hard
+            git checkout -b ${{ env.UNCOMMITTED_BRANCH }}
+            git pull https://${{ vars.DEPLOY_USER }}:${{ env.DEPLOY_PAT }}@${{ env.GIT_REPO_URL }} ${{ env.UNCOMMITTED_BRANCH }}
+          "
 
       # Post uncommitted changes to Slack channel.
       - name: Post Un-committed Changes to Slack channel
@@ -154,7 +173,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🔀 *Un-commmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
+                    "text": "🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🌳 *Uncommmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
                   }
                 }
               ]
@@ -166,12 +185,18 @@ jobs:
 
       # Deploy.
       - name: Deploy to Production
+        if: ${{ success() && steps.check_uncommitted.outcome == 'success' }}
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           DEPLOY_PAT: ${{ secrets.DEPLOY_WORKFLOW_PAT }}
           GIT_REPO_URL: github.com/${{ github.repository }}
         run: |
-          ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "cd ${{ secrets.PROD_REMOTE_WEB_ROOT }} && git pull https://${{ vars.DEPLOY_USER }}:${{ env.DEPLOY_PAT }}@${{ env.GIT_REPO_URL }} ${{ env.DEFAULT_BRANCH }}"
+          ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
+            cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
+            git checkout ${{ env.DEFAULT_BRANCH }}
+            git reset --hard
+            git pull https://${{ vars.DEPLOY_USER }}:${{ env.DEPLOY_PAT }}@${{ env.GIT_REPO_URL }} ${{ env.DEFAULT_BRANCH }}
+          "
 
       # Post to Slack channel.
       - name: Post Success to Slack channel
