@@ -181,7 +181,7 @@ jobs:
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
-          UNCOMMITTED_BRANCH: hotfix/staging/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
+          UNCOMMITTED_BRANCH: hotfix/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
           GIT_REPO_URL: https://github.com/${{ github.repository }}
 
       # Deploy.
