@@ -231,7 +231,7 @@ jobs:
       # Write success message to Slack channel.
       - name: Post Success to Slack channel
         id: slack_success
-        if: success()
+        if: success() && !github.event.pull_request.draft
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
