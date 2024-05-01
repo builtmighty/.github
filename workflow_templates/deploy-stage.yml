@@ -89,7 +89,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.RC_SSH_PORT }} ${{ secrets.RC_SSH_USER }}@${{ secrets.RC_SSH_HOST }} "
             cd ${{ secrets.RC_REMOTE_WEB_ROOT }}
-            git diff > uncommitted_changes.patch
+            git stash show -p > uncommitted_changes.patch
           "
           scp -i ~/.ssh/id_rsa -P ${{ secrets.RC_SSH_PORT }} ${{ secrets.RC_SSH_USER }}@${{ secrets.RC_SSH_HOST }}:${{ secrets.RC_REMOTE_WEB_ROOT }}/uncommitted_changes.patch .
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.RC_SSH_PORT }} ${{ secrets.RC_SSH_USER }}@${{ secrets.RC_SSH_HOST }} "
