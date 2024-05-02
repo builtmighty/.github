@@ -87,11 +87,24 @@ jobs:
       - name: Capture Uncommitted Code
         if: ${{ failure() && steps.check_uncommitted.outcome == 'failure' }}
         run: |
+          # Connect and create the patch.
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.RC_SSH_PORT }} ${{ secrets.RC_SSH_USER }}@${{ secrets.RC_SSH_HOST }} "
             cd ${{ secrets.RC_REMOTE_WEB_ROOT }}
-            git stash show -p > uncommitted_changes.patch
+            git diff > uncommitted_changes.patch
           "
+          # Download the patch file.
           scp -i ~/.ssh/id_rsa -P ${{ secrets.RC_SSH_PORT }} ${{ secrets.RC_SSH_USER }}@${{ secrets.RC_SSH_HOST }}:${{ secrets.RC_REMOTE_WEB_ROOT }}/uncommitted_changes.patch .
+          # Check if the patch is empty.
+          if [[ ! -s uncommitted_changes.patch ]]; then
+            # Delete the empty patch file.
+            rm -rf uncommitted_changes.patch
+            # SSH back in and try git stash show -p for the patch.
+            ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.RC_SSH_PORT }} ${{ secrets.RC_SSH_USER }}@${{ secrets.RC_SSH_HOST }} "
+              cd ${{ secrets.RC_REMOTE_WEB_ROOT }}
+              git stash show -p > uncommitted_changes.patch
+            "
+            scp -i ~/.ssh/id_rsa -P ${{ secrets.RC_SSH_PORT }} ${{ secrets.RC_SSH_USER }}@${{ secrets.RC_SSH_HOST }}:${{ secrets.RC_REMOTE_WEB_ROOT }}/uncommitted_changes.patch .
+          fi
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.RC_SSH_PORT }} ${{ secrets.RC_SSH_USER }}@${{ secrets.RC_SSH_HOST }} "
             cd ${{ secrets.RC_REMOTE_WEB_ROOT }}
             rm -rf uncommitted_changes.patch
@@ -112,14 +125,23 @@ jobs:
           git config user.name "builtmightybot"
           git config user.email "bot@builtmighty.com"
           git checkout -b ${{ env.UNCOMMITTED_BRANCH }}
+          git push origin ${{ env.UNCOMMITTED_BRANCH }}
           rm -rf uncommitted_changes.patch
           git add .
           git commit -S -m "🚨 Captured ALL Uncommitted Code on Staging"
           git push origin ${{ env.UNCOMMITTED_BRANCH }}
 
+      # Check if hotfix branch exists on GitHub.
+      - name: Check Hotfix Branch
+        if: ${{ failure() && steps.check_uncommitted.outcome == 'failure' }}
+        run: |
+          git fetch --all
+          git branch -r | grep hotfix/staging/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
+        id: check_hotfix
+
       # Pull in and force hotfix branch as active on staging.
       - name: Pull in and force hotfix branch to staging
-        if: ${{ failure() && steps.check_uncommitted.outcome == 'failure' }}
+        if: ${{ failure() && steps.check_uncommitted.outcome == 'failure' && steps.check_hotfix.outcome == 'success' }}
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           DEPLOY_PAT: ${{ secrets.DEPLOY_WORKFLOW_PAT }}
@@ -134,9 +156,9 @@ jobs:
           "
 
       # Post uncommitted changes to Slack channel.
-      - name: Post Un-committed Changes to Slack channel
-        id: slack_failed
-        if: failure()
+      - name: Slack Uncommitted Changes Notification - Long
+        id: slack_failed_long
+        if: failure() && vars.RC_FAIL_MESSAGE == 'true'
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -184,6 +206,52 @@ jobs:
           UNCOMMITTED_BRANCH: hotfix/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
           GIT_REPO_URL: https://github.com/${{ github.repository }}
 
+      # Post uncommitted changes to Slack channel.
+      - name: Slack Uncommitted Changes Notification - Short
+        id: slack_failed_short
+        if: failure() && vars.RC_FAIL_MESSAGE == 'short'
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          # Slack channel id, channel name, or user id to post message.
+          # See also: https://api.slack.com/methods/chat.postMessage#channels
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          # For posting a rich message using Block Kit
+          payload: |
+            {
+              "text": "*🛑 Deployment Failed*\n============================\nGitHub Action build result: `${{ job.status }}`\nTriggered by: `${{ github.triggering_actor }}`\n${{ github.event.pull_request.html_url || github.event.head_commit.url }} \n\n",
+              "blocks": [
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "${{ vars.DEP_RC_FAIL_HEAD }}",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "${{ vars.DEP_RC_FAIL_BODY }}"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🔀 *Un-commmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
+          UNCOMMITTED_BRANCH: hotfix/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
+          GIT_REPO_URL: https://github.com/${{ github.repository }}
+
       # Deploy.
       - name: Deploy to Staging
         if: ${{ success() && steps.check_uncommitted.outcome == 'success' }}
@@ -200,9 +268,9 @@ jobs:
           "
 
       # Post to Slack channel.
-      - name: Post Success to Slack channel
-        id: slack
-        if: success()
+      - name: Slack Success Notification - Long
+        id: slack_success_long
+        if: success() && vars.RC_SUCC_MESSAGE == 'true'
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -235,6 +303,50 @@ jobs:
                   "type": "image",
                   "image_url": "${{ vars.DEP_RC_SUCC_IMAGE }}",
                   "alt_text": "inspiration"
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "✅ *GitHub Action Result*: `${{ job.status }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
+
+        # Post to Slack channel.
+      - name: Slack Success Notification - Short
+        id: slack_success_short
+        if: success() && vars.RC_SUCC_MESSAGE == 'short'
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          # Slack channel id, channel name, or user id to post message.
+          # See also: https://api.slack.com/methods/chat.postMessage#channels
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          # For posting a rich message using Block Kit
+          payload: |
+            {
+              "text": "GitHub Action Build Result: `${{ job.status }}`\nTriggered by: `${{ github.triggering_actor }}`\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}",
+              "blocks": [
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "${{ vars.DEP_RC_SUCC_HEAD }}",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "${{ vars.DEP_RC_SUCC_BODY }}"
+                  }
                 },
                 {
                   "type": "section",
