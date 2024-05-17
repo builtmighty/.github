@@ -1,46 +1,41 @@
-# ======= Expected GH Actions Secrets & Vars =======
-## Org Secrets - Set in Org Github Settings
-# - SLACK_BOT_API_KEY
-# - SLACK_TEAM_ID
-# - SSH_PRIVATE_KEY
-# - BOT_SIGNING_KEY
-## Repo Secrets - MUST be set per Repo in Github Repo Settings
-# - PROD_REMOTE_WEB_ROOT
-# - PROD_SSH_HOST
-# - PROD_SSH_PORT
-# - PROD_SSH_USER
-# - RC_REMOTE_WEB_ROOT
-# - RC_SSH_HOST
-# - RC_SSH_PORT
-# - RC_SSH_USER
-# - SLACK_CHANNEL_ID
+###======== Documentation ========###
+# Learn more here: https://www.notion.so/GitHub-Automated-Linting-Deployment-9c1be78b9350431bb9230cc821608dd4?pvs=4
+# View templates here: https://github.com/builtmighty/.github/tree/main/workflow_templates
+
+##====== Steps ======##
+# 1. Checks out the code.
+# 2. Sets up deployment keys.
+# 3. Checks for uncommitted code.
+# 4. Captures uncommitted code, in the form of a patch.
+# 5. Applies the patch to a hotfix branch.
+# 6. Checks if the hotfix branch was created.
+# 7. Updates staging to hotfix branch.
+# 8. Deploys code, if no uncommitted code was found.
+# 9. Slack notifications.
+# 10. Run final job status check.
 
 name: 🚀 Production Deployment
 env:
-  DEFAULT_BRANCH: $(jq -r '.pull_request.base.ref' $GITHUB_EVENT_PATH)
-  _LINTER_RULES_DIR: .github/linters
+  DEFAULT_BRANCH: ${{ github.event.pull_request.base.ref }}
 
 # Controls when the workflow will run
 on:
-  # Triggers the workflow pull request events but only for the default branch
+  # Triggers the workflow on push or pull request events but only for the default branch
   pull_request:
     branches: [main,master,production]
     types:
       - closed
-
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+# Workflow jobs.
 jobs:
-  # This workflow contains a single job called "build"
-  deploy-prod:
-    # Only run the Job if the PR is closed AND the PR is merged
+  # Workflow job of code-check-prod.
+  deploy-stage:
+    # Only run the job if the PR is closed AND the PR is merged.
     if: github.event.pull_request.merged == true
-    # The type of runner that the job will run on
+    # Runner to run
     runs-on: [Large-Runner-Ubuntu]
-
-    # Set permissions
     permissions:
       contents: write
       packages: read
@@ -48,14 +43,15 @@ jobs:
       pull-requests: write
       issues: write
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
+    # Steps for the workflow.
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      ## 1. Checks out the code.
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      ## 2. Sets up deployment keys.
       # Setup Deployment SSH Key
       - name: Setup Deployment SSH Key
         env:
@@ -73,8 +69,9 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           chmod 600 ~/.ssh/bot
 
-      # Check for uncommitted changes.
+      ## 3. Checks for uncommitted code.
       - name: Check for Uncommitted Code on Production
+        continue-on-error: true
         run: |
           ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "cd ${{ secrets.PROD_REMOTE_WEB_ROOT }} && git status -s" > ~/.ssh/git-status.txt
           if [[ -s ~/.ssh/git-status.txt ]]; then
@@ -82,23 +79,45 @@ jobs:
           fi
         id: check_uncommitted
 
-      # Capture uncommitted code and download patch.
+      ## 4. Captures uncommitted code, in the form of a patch.
+      # Tries to capture via git diff, if that fails, tries git stash show -p.
       - name: Capture Uncommitted Code
-        if: ${{ failure() && steps.check_uncommitted.outcome == 'failure' }}
+        continue-on-error: true
+        if: steps.check_uncommitted.outcome == 'failure'
         run: |
+          # Connect and create the patch.
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
             cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
-            git stash show -p > uncommitted_changes.patch
+            git diff > uncommitted_changes.patch
           "
+          # Download the patch file.
           scp -i ~/.ssh/id_rsa -P ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}:${{ secrets.PROD_REMOTE_WEB_ROOT }}/uncommitted_changes.patch .
+          # Check if the patch is empty.
+          if [[ ! -s uncommitted_changes.patch ]]; then
+            # Delete the empty patch file.
+            rm -rf uncommitted_changes.patch
+            # SSH back in and try git stash show -p for the patch.
+            ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
+              cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
+              git stash show -p > uncommitted_changes.patch
+            "
+            # Download the patch file.
+            scp -i ~/.ssh/id_rsa -P ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}:${{ secrets.PROD_REMOTE_WEB_ROOT }}/uncommitted_changes.patch .
+          fi
+          # Delete the patch file from remote.
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
             cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
             rm -rf uncommitted_changes.patch
           "
+          if [[ ! -s uncommitted_changes.patch ]]; then
+            exit 1
+          fi
+        id: capture_uncommitted
 
-      # Apply Patch and commit.
-      - name: Apply Patch and Commit
-        if: ${{ failure() && steps.check_uncommitted.outcome == 'failure' }}
+      ## 5. Applies the patch to a hotfix branch.
+      - name: Apply Uncommitted Patch and Commit
+        continue-on-error: true
+        if: steps.check_uncommitted.outcome == 'failure' && steps.capture_uncommitted.outcome == 'success'
         env:
           UNCOMMITTED_BRANCH: hotfix/production/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
           GIT_REPO_URL: https://github.com/${{ github.repository }}
@@ -111,14 +130,25 @@ jobs:
           git config user.name "builtmightybot"
           git config user.email "bot@builtmighty.com"
           git checkout -b ${{ env.UNCOMMITTED_BRANCH }}
+          git push origin ${{ env.UNCOMMITTED_BRANCH }}
           rm -rf uncommitted_changes.patch
           git add .
           git commit -S -m "🚨 Captured ALL Uncommitted Code on Production"
           git push origin ${{ env.UNCOMMITTED_BRANCH }}
 
-      # Pull in and force hotfix branch as active on production.
-      - name: Pull in and force hotfix branch to production
-        if: ${{ failure() && steps.check_uncommitted.outcome == 'failure' }}
+      ## 6. Checks if the hotfix branch was created.
+      - name: Check Hotfix Branch Exists
+        continue-on-error: true
+        if: steps.check_uncommitted.outcome == 'failure' && steps.capture_uncommitted.outcome == 'success'
+        run: |
+          git fetch --all
+          git branch -r | grep hotfix/production/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
+        id: check_hotfix
+
+      ## 7. Updates production to hotfix branch.
+      - name: Pull Hotfix Branch to Production
+        continue-on-error: true
+        if: steps.check_uncommitted.outcome == 'failure' && steps.capture_uncommitted.outcome == 'success' && steps.check_hotfix.outcome == 'success'
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           DEPLOY_PAT: ${{ secrets.DEPLOY_WORKFLOW_PAT }}
@@ -132,10 +162,28 @@ jobs:
             git pull https://${{ vars.DEPLOY_USER }}:${{ env.DEPLOY_PAT }}@${{ env.GIT_REPO_URL }} ${{ env.UNCOMMITTED_BRANCH }}
           "
 
-      # Post uncommitted changes to Slack channel.
-      - name: Post Un-committed Changes to Slack channel
-        id: slack_failed
-        if: failure()
+      ## 8. Deploys code, if no uncommitted code was found.
+      - name: Deploy to Production
+        continue-on-error: true
+        if: steps.check_uncommitted.outcome == 'success'
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          DEPLOY_PAT: ${{ secrets.DEPLOY_WORKFLOW_PAT }}
+          GIT_REPO_URL: github.com/${{ github.repository }}
+        run: |
+          ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
+            cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
+            git checkout ${{ env.DEFAULT_BRANCH }}
+            git reset --hard
+            git pull https://${{ vars.DEPLOY_USER }}:${{ env.DEPLOY_PAT }}@${{ env.GIT_REPO_URL }} ${{ env.DEFAULT_BRANCH }}
+          "
+        id: deploy_stage
+
+      ## 9. Slack notifications.
+      # Post uncommitted branch to Slack channel - LONG.
+      - name: Slack Uncommitted Branch Notification - Long
+        id: slack_uncommitted_long
+        if: steps.check_uncommitted.outcome == 'failure' && steps.check_hotfix.outcome == 'success' && vars.DEPLOY_FAIL_MESSAGE != 'short' && vars.DEPLOY_FAIL_MESSAGE != 'off'
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -183,25 +231,153 @@ jobs:
           UNCOMMITTED_BRANCH: hotfix/production/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
           GIT_REPO_URL: https://github.com/${{ github.repository }}
 
-      # Deploy.
-      - name: Deploy to Production
-        if: ${{ success() && steps.check_uncommitted.outcome == 'success' }}
+      # Post uncommitted branch to Slack channel - SHORT.
+      - name: Slack Uncommitted Branch Notification - Short
+        id: slack_uncommitted_short
+        if: steps.check_uncommitted.outcome == 'failure' && steps.check_hotfix.outcome == 'success' && vars.DEPLOY_FAIL_MESSAGE == 'short'
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          # Slack channel id, channel name, or user id to post message.
+          # See also: https://api.slack.com/methods/chat.postMessage#channels
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          # For posting a rich message using Block Kit
+          payload: |
+            {
+              "text": "*🛑 Deployment Failed*\n============================\nGitHub Action build result: `${{ job.status }}`\nTriggered by: `${{ github.triggering_actor }}`\n${{ github.event.pull_request.html_url || github.event.head_commit.url }} \n\n",
+              "blocks": [
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "${{ vars.DEP_PROD_FAIL_HEAD }}",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "${{ vars.DEP_PROD_FAIL_BODY }}"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🌳 *Uncommmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
+                  }
+                }
+              ]
+            }
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          DEPLOY_PAT: ${{ secrets.DEPLOY_WORKFLOW_PAT }}
-          GIT_REPO_URL: github.com/${{ github.repository }}
-        run: |
-          ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
-            cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
-            git checkout ${{ env.DEFAULT_BRANCH }}
-            git reset --hard
-            git pull https://${{ vars.DEPLOY_USER }}:${{ env.DEPLOY_PAT }}@${{ env.GIT_REPO_URL }} ${{ env.DEFAULT_BRANCH }}
-          "
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
+          UNCOMMITTED_BRANCH: hotfix/production/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
+          GIT_REPO_URL: https://github.com/${{ github.repository }}
 
-      # Post to Slack channel.
-      - name: Post Success to Slack channel
-        id: slack
-        if: success()
+      # Post uncommitted changes to Slack channel - LONG.
+      - name: Slack Uncommitted Changes Notification - Long
+        id: slack_uncommitted_changes_long
+        if: steps.check_uncommitted.outcome == 'failure' && steps.check_hotfix.outcome == 'failure' && vars.DEPLOY_FAIL_MESSAGE != 'short' && vars.DEPLOY_FAIL_MESSAGE != 'off'
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          # Slack channel id, channel name, or user id to post message.
+          # See also: https://api.slack.com/methods/chat.postMessage#channels
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          # For posting a rich message using Block Kit
+          payload: |
+            {
+              "text": "*🛑 Deployment Failed*\n============================\nGitHub Action build result: `${{ job.status }}`\nTriggered by: `${{ github.triggering_actor }}`\n${{ github.event.pull_request.html_url || github.event.head_commit.url }} \n\n",
+              "blocks": [
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "${{ vars.DEP_PROD_FAIL_HEAD }}",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "${{ vars.DEP_PROD_FAIL_BODY }}"
+                  }
+                },
+                {
+                  "type": "image",
+                  "image_url": "${{ vars.DEP_PROD_FAIL_IMAGE }}",
+                  "alt_text": "inspiration"
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*WARNING*: There is uncommitted code on production. We were unable to capture it.\n\n🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🌳 *Uncommmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
+          UNCOMMITTED_BRANCH: hotfix/production/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
+          GIT_REPO_URL: https://github.com/${{ github.repository }}
+
+      # Post uncommitted changes to Slack channel - SHORT.
+      - name: Slack Uncommitted Branch Notification - Short
+        id: slack_uncommitted_changes_short
+        if: steps.check_uncommitted.outcome == 'failure' && steps.check_hotfix.outcome == 'failure' && vars.DEPLOY_FAIL_MESSAGE == 'short'
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          # Slack channel id, channel name, or user id to post message.
+          # See also: https://api.slack.com/methods/chat.postMessage#channels
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          # For posting a rich message using Block Kit
+          payload: |
+            {
+              "text": "*🛑 Deployment Failed*\n============================\nGitHub Action build result: `${{ job.status }}`\nTriggered by: `${{ github.triggering_actor }}`\n${{ github.event.pull_request.html_url || github.event.head_commit.url }} \n\n",
+              "blocks": [
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "${{ vars.DEP_PROD_FAIL_HEAD }}",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "${{ vars.DEP_PROD_FAIL_BODY }}"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*WARNING*: There is uncommitted code on production. We were unable to capture it.\n\n🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🌳 *Uncommmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
+          UNCOMMITTED_BRANCH: hotfix/production/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
+          GIT_REPO_URL: https://github.com/${{ github.repository }}
+
+      # Slack deployment success notification - LONG.
+      - name: Slack Success Notification - Long
+        id: slack_success_long
+        if: steps.check_uncommitted.outcome == 'failure' && steps.deploy_stage.outcome == 'success' && vars.DEPLOY_SUCC_MESSAGE != 'short' && vars.DEPLOY_SUCC_MESSAGE != 'off'
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -246,3 +422,57 @@ jobs:
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
+
+        # Post to Slack channel.
+      
+      # Slack deployment success notification - SHORT.
+      - name: Slack Success Notification - Short
+        id: slack_success_short
+        if: steps.check_uncommitted.outcome == 'failure' && steps.deploy_stage.outcome == 'success' && vars.DEPLOY_SUCC_MESSAGE == 'short'
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          # Slack channel id, channel name, or user id to post message.
+          # See also: https://api.slack.com/methods/chat.postMessage#channels
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          # For posting a rich message using Block Kit
+          payload: |
+            {
+              "text": "🚀 Production Deployment ✅: `${{ job.status }}`\nTriggered by: `${{ github.triggering_actor }}`\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}",
+              "blocks": [
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "${{ vars.DEP_PROD_SUCC_HEAD }}",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "${{ vars.DEP_PROD_SUCC_BODY }}"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "✅ *GitHub Action Result*: `${{ job.status }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
+
+      ## 10. Run final job status check.
+      # Check if the job failed or succeeded.
+      - name: Final Job Status Check
+        if: steps.check_uncommitted.outcome == 'failure'
+        run: |
+          echo "Job failed. Please check the logs for more information."
+          exit 1
