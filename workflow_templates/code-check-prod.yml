@@ -1,24 +1,16 @@
-# ======= Expected GH Actions Secrets & Vars =======
-## Org Secrets - Set in Org Github Settings
-# - SLACK_BOT_API_KEY
-# - SLACK_TEAM_ID
-# - SSH_PRIVATE_KEY
-# - BOT_SIGNING_KEY
-## Repo Secrets - MUST be set per Repo in Github Repo Settings
-# - PROD_REMOTE_WEB_ROOT
-# - PROD_SSH_HOST
-# - PROD_SSH_PORT
-# - PROD_SSH_USER
-# - RC_REMOTE_WEB_ROOT
-# - RC_SSH_HOST
-# - RC_SSH_PORT
-# - RC_SSH_USER
-# - SLACK_CHANNEL_ID
-## Linting Settings - Set at the org level, but can be overridden.
-# - STYLELINTRC
-# - STYLELINTIGNORE
-# - ESLINTRC
-# - FILTER_REGEX_EXCLUDE
+###======== Documentation ========###
+# Learn more here: https://www.notion.so/GitHub-Automated-Linting-Deployment-9c1be78b9350431bb9230cc821608dd4?pvs=4
+# View templates here: https://github.com/builtmighty/.github/tree/main/workflow_templates
+
+##====== Steps ======##
+# 1. Checks out the code.
+# 2. Sets up linting configurations.
+# 3. Lints the code.
+# 4. Sets up external SSH connection.
+# 5. Checks production for uncommitted changes.
+# 6. Notifies Slack for linting failures, uncommitted changes, or linting success.
+# 7. Workflow summary for linting failures or successes.
+# 8. Run final job status check.
 
 name: 🔒️ Production Code Validation
 env:
@@ -28,19 +20,16 @@ env:
 # Controls when the workflow will run
 on:
   # Triggers the workflow on push or pull request events but only for the default branch
-  # push:
-  #   branches: $default-branch
   pull_request:
-    branches: [main,master,production]
-
+    branches: [main,master,production,prod]
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+# Workflow jobs.
 jobs:
-  # This workflow contains a single job called "build"
+  # Workflow job of code-check-prod.
   code-check-prod:
-    # The type of runner that the job will run on
+    # Runner to run
     runs-on: [Large-Runner-Ubuntu]
     permissions:
       contents: write
@@ -49,44 +38,32 @@ jobs:
       pull-requests: write
       issues: write
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
+    # Steps for the workflow.
     steps:
+      ## 1. Checks out the code.
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      ## Configuring Super Linter
-
+      ## 2. Sets up linting configurations.
       # Create tmp Directory for Linter Config Files and Git Checks
-      - name: Create tmp Directory for Config Files and Git Checks
+      - name: Create Directory for Config Files
         run: |
           mkdir -p ${{ env._LINTER_RULES_DIR }}
 
       # Setup Config Files for stylelint (CSS,SASS,LESS)
       # You can override these rules by setting a repo level variable labelled STYLELINTRC.
-      - name: 'Create StyleLint Config File'
+      - name: Create StyleLint Config File
         run: |
             echo '${{ vars.STYLELINTRC }}' > ${{ env._LINTER_RULES_DIR }}/.stylelintrc.json
 
-      # Create stylelint ignore file. Variable can be set to a string of "empty" to disable.
+      # Create stylelint ignore file
+      # You can override these rules by setting a repo level variable labelled STYLELINTIGNORE.
       - name: Create StyleLint Ignore File
         run: |
-            if [ "${{ vars.STYLELINTIGNORE }}" = "empty" ]; then
-              echo "No stylelintignore file defined."
-            else
-              echo '${{ vars.STYLELINTIGNORE }}' > .stylelintignore
-            fi
-
-      # Setup Config File for GH Action Linter
-      - name: Create ActionLint Config File
-        run: |
-            echo 'self-hosted-runner:
-              # Labels of self-hosted runner in array of string
-              labels:
-                - Large-Runner-Ubuntu
-            ' > ${{ env._LINTER_RULES_DIR }}/actionlint.yaml
+            echo '${{ vars.STYLELINTIGNORE }}' > .stylelintignore
 
       # Only Check for JS Fatal Syntax Errors, Remove Step or add rules to lint JS Code Styling/Structure
       # You can override these rules by setting a repo level variable labelled ESLINTRC.
@@ -95,24 +72,23 @@ jobs:
           echo '${{ vars.ESLINTRC }}' > ${{ env._LINTER_RULES_DIR }}/.eslintrc.json
 
       # Create ESLint ignore file
+      # You can override these rules by setting a repo level variable labelled ESLINTIGNORE.
       - name: Create ESLint Ignore File
         run: |
-            if [ "${{ vars.ESLINTIGNORE }}" = "empty" ]; then
-              echo "No eslintignore file defined."
-            else
-              echo '${{ vars.ESLINTIGNORE }}' > .eslintignore
-            fi
+            echo '${{ vars.ESLINTIGNORE }}' > .eslintignore
 
+      ## 3. Lints the code.
       # Run Super Linter ( Lints: PHP, CSS, JSON, GH Actions, JS, HTML)
       - name: Run Super Linter
-        id: super-linter
+        id: super_linter
+        continue-on-error: true
         uses: github/super-linter/slim@v5
         env:
           DEFAULT_WORKSPACE: "./wp-content/"
           LINTER_RULES_PATH: ${{ env._LINTER_RULES_DIR }}
+          VALIDATE_ALL_CODEBASE: false
           CSS_FILE_NAME: .stylelintrc.json
           JAVASCRIPT_ES_CONFIG_FILE: .eslintrc.json
-          VALIDATE_ALL_CODEBASE: false
           VALIDATE_CSS: true
           VALIDATE_JAVASCRIPT_ES: true
           VALIDATE_PHP: true
@@ -123,46 +99,35 @@ jobs:
           IGNORE_GENERATED_FILES: true
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IGNORE_GITIGNORED_FILES: true
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           FILTER_REGEX_EXCLUDE: "${{ vars.FILTER_REGEX_EXCLUDE }}"
           GITHUB_ACTIONS_COMMAND_ARGS: -shellcheck= -pyflakes=
-          # DEFAULT_BRANCH: main
-          # Turn off PHP_CodeSniffer, we only want to return FATAL errors and not code styling, uncomment for strict code structure checks
-          # VALIDATE_PHP_PHPCS: true
-          # Use ESLint instead so we can have tighter controls on Linting, Uncomment VALIDATE_JAVASCRIPT_STANDARD to enable default Standard JS Linting
-          # VALIDATE_JAVASCRIPT_STANDARD: true
 
-      ## On failure, let us know what happened.
-
-      # Write errors to workflow job summary
-      - name: Write Errors to Workflow Summary
-        if: failure()
+      ## 4. Sets up external SSH connection.
+      # Setup Deployment SSH Key
+      - name: Setup Deployment SSH Key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
-          echo "# 💩 Code Linting Failed" >> $GITHUB_STEP_SUMMARY
-          echo $GITHUB_STEP_SUMMARY
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
 
-      # Replace color codes with markdown styles.
-      - name: Replace Color Codes in Errors
-        if: failure()
+      ## 5. Checks production for uncommitted changes.
+      # Check for uncommitted changes.
+      - name: Check for Uncommitted Code on Production
+        continue-on-error: true
         run: |
-          sed -i 's/\x1B\[[0-9;]*[JKmsu]//g' super-linter.log  # Remove ANSI color codes
-          sed -i 's/\[ERROR\]/[ERROR]/g' super-linter.log  # Replace [ERROR] with red
-          sed -i 's/\[WARNING\]/[WARNING]/g' super-linter.log  # Replace [WARNING] with yellow
-      
-      # Write errors to workflow job summary.
-      - name: Display Linting Errors
-        if: failure()
-        run: |
-          # This command will print the linting errors and warnings to the GitHub Actions workflow summary
-          echo 'You cannot merge until these issues are resolved.' >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat super-linter.log | grep -E '\[ERROR\]|\[WARNING\]|PHP (Parse|Fatal) error:' >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "cd ${{ secrets.PROD_REMOTE_WEB_ROOT }} && git status -s" > ~/.ssh/git-status.txt
+          if [[ -s ~/.ssh/git-status.txt ]]; then
+            exit 1
+          fi
+        id: check_uncommitted
 
-      # Write errors to Slack channel.
-      - name: Post Linting Errors to Slack channel
-        id: slack_failed
-        if: failure()
+      ## 6. Notifies Slack for linting failures, uncommitted changes, or linting success.
+      # Write linting errors to Slack channel, long message.
+      - name: Slack Linting Errors Notification - LONG
+        id: slack_linting_failed_long
+        if: steps.super_linter.outcome != 'success' && vars.CHECK_FAIL_MESSAGE != 'short' && vars.CHECK_FAIL_MESSAGE != 'off'
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -218,20 +183,93 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
           GIT_REPO_URL: https://github.com/${{ github.repository }}
 
-      ## On success, let us know what happened.
+      # Write linting errors to Slack channel, short message.
+      - name: Slack Linting Errors Notification - SHORT
+        id: slack_linting_failed_short
+        if: steps.super_linter.outcome != 'success' && vars.CHECK_FAIL_MESSAGE == 'short'
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          # Slack channel id, channel name, or user id to post message.
+          # See also: https://api.slack.com/methods/chat.postMessage#channels
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          # Write errors.
+          payload: |
+            {
+              "text": "💩 Code Linting Failed. You cannot merge until these issues are resolved. View Pull Request: ${{ github.event.pull_request.html_url }}",
+            	"blocks": [
+            		{
+            			"type": "header",
+            			"text": {
+            				"type": "plain_text",
+            				"text": "${{ vars.CC_PROD_FAIL_HEAD }}",
+            				"emoji": true
+            			}
+            		},
+            		{
+            			"type": "actions",
+            			"elements": [
+            				{
+            					"type": "button",
+            					"text": {
+            						"type": "plain_text",
+            						"text": "View Pull Request",
+            						"emoji": true
+            					},
+            					"value": "click_me_123",
+            					"url": "${{ github.event.pull_request.html_url || github.event.repository.html_url }}",
+            					"action_id": "actionId-0"
+            				}
+            			]
+            		}
+            	]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
+          GIT_REPO_URL: https://github.com/${{ github.repository }}
 
-      # Write success message to workflow job summary
-      - name: Write Success Message to Workflow Summary
-        if: success()
-        run: |
-          echo "# 🎉 Code Successfully Checked" >> $GITHUB_STEP_SUMMARY
-          echo "You are now clear to merge into the release candidate, which will trigger a deployment to staging." >> $GITHUB_STEP_SUMMARY
-          echo $GITHUB_STEP_SUMMARY
+      # Post uncommitted changes to Slack channel.
+      - name: Slack Uncommitted Changes Notification
+        id: slack_uncommitted_changes
+        if: steps.check_uncommitted.outcome != 'success' 
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          # Slack channel id, channel name, or user id to post message.
+          # See also: https://api.slack.com/methods/chat.postMessage#channels
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          # For posting a rich message using Block Kit
+          payload: |
+            {
+              "text": "*👀🚨 Uncommitted Changes*\n============================\nThere are currently uncommited changes on production. Someone should take a look!\n\n",
+              "blocks": [
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "👀🚨 Uncommitted Changes on Production",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "There are currently uncommitted changes on production. Someone should take a look, before we try deploying!"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
+          UNCOMMITTED_BRANCH: hotfix/production/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
+          GIT_REPO_URL: https://github.com/${{ github.repository }}
 
-      # Write success message to Slack channel.
-      - name: Post Success to Slack channel
-        id: slack_success
-        if: success() && !github.event.pull_request.draft
+      # Write success message to Slack channel, but in long form.
+      - name: Slack Success Notification - LONG
+        id: slack_success_long
+        if: steps.super_linter.outcome == 'success' && !github.event.pull_request.draft && vars.CHECK_SUCC_MESSAGE != 'short' && vars.CHECK_SUCC_MESSAGE != 'off' 
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -286,3 +324,84 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
           GIT_REPO_URL: https://github.com/${{ github.repository }}
+
+      # Write success message to Slack channel, but in long form.
+      - name: Slack Success Notification - SHORT
+        id: slack_success_short
+        if: steps.super_linter.outcome  == 'success' && !github.event.pull_request.draft && vars.CHECK_SUCC_MESSAGE == 'short'
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          # Slack channel id, channel name, or user id to post message.
+          # See also: https://api.slack.com/methods/chat.postMessage#channels
+          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
+          # Write errors.
+          payload: |
+            {
+              "text": "✅ Success! You can now merge into the main branch. View Pull Request: ${{ github.event.pull_request.html_url }}",
+            	"blocks": [
+            		{
+            			"type": "divider"
+            		},
+            		{
+            			"type": "header",
+            			"text": {
+            				"type": "plain_text",
+            				"text": "${{ vars.CC_PROD_SUCC_HEAD }}",
+            				"emoji": true
+            			}
+            		},
+            		{
+            			"type": "actions",
+            			"elements": [
+            				{
+            					"type": "button",
+            					"text": {
+            						"type": "plain_text",
+            						"text": "View Pull Request",
+            						"emoji": true
+            					},
+            					"value": "click_me_123",
+            					"url": "${{ github.event.pull_request.html_url || github.event.repository.html_url }}",
+            					"action_id": "actionId-0"
+            				}
+            			]
+            		}
+            	]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
+          GIT_REPO_URL: https://github.com/${{ github.repository }}
+
+      ## 7. Workflow summary for linting failures or successes.
+      # Write errors to workflow job summary
+      - name: Write Errors to Workflow Summary
+        if: steps.super_linter.outcome != 'success'
+        run: |
+          echo "# 💩 Code Linting Failed" >> $GITHUB_STEP_SUMMARY
+          echo $GITHUB_STEP_SUMMARY
+      
+      # Write errors to workflow job summary.
+      - name: Display Linting Errors
+        if: steps.super_linter.outcome != 'success'
+        run: |
+          # This command will print the linting errors and warnings to the GitHub Actions workflow summary
+          echo 'You cannot merge until these issues are resolved.' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat super-linter.log | grep -E '\[ERROR\]|\[WARNING\]|PHP (Parse|Fatal) error:' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      # Write success message to workflow job summary
+      - name: Write Success Message to Workflow Summary
+        if: steps.super_linter.outcome == 'success'
+        run: |
+          echo "# 🎉 Code Successfully Checked" >> $GITHUB_STEP_SUMMARY
+          echo "You are now clear to merge into the main branch, which will trigger a deployment to production." >> $GITHUB_STEP_SUMMARY
+          echo $GITHUB_STEP_SUMMARY
+
+      ## 8. Run final job status check.
+      # Check if the job failed or succeeded.
+      - name: Final Job Status Check
+        if: steps.super_linter.outcome == 'failure'
+        run: |
+          echo "Job failed. Please check the logs for more information."
+          exit 1
