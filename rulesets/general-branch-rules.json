@@ -1,5 +1,5 @@
 {
-  "id": 632054,
+  "id": 632053,
   "name": "General Branch Rules",
   "target": "branch",
   "source_type": "Repository",
@@ -8,15 +8,28 @@
   "conditions": {
     "ref_name": {
       "exclude": [
-        "refs/heads/rc/*",
-        "~DEFAULT_BRANCH"
+        "refs/heads/hotfix/*"
       ],
       "include": [
-        "~ALL"
+        "~DEFAULT_BRANCH",
+        "refs/heads/rc/*"
       ]
     }
   },
   "rules": [
+    {
+      "type": "non_fast_forward"
+    },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 0,
+        "dismiss_stale_reviews_on_push": false,
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": false
+      }
+    },
     {
       "type": "required_signatures"
     }
