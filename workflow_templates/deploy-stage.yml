@@ -378,7 +378,7 @@ jobs:
       # Slack deployment success notification - LONG.
       - name: Slack Success Notification - Long
         id: slack_success_long
-        if: steps.check_uncommitted.outcome == 'failure' && steps.deploy_stage.outcome == 'success' && vars.DEPLOY_SUCC_MESSAGE != 'short' && vars.DEPLOY_SUCC_MESSAGE != 'off'
+        if: steps.deploy_stage.outcome == 'success' && vars.DEPLOY_SUCC_MESSAGE != 'short' && vars.DEPLOY_SUCC_MESSAGE != 'off'
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -429,7 +429,7 @@ jobs:
       # Slack deployment success notification - SHORT.
       - name: Slack Success Notification - Short
         id: slack_success_short
-        if: steps.check_uncommitted.outcome == 'failure' && steps.deploy_stage.outcome == 'success' && vars.DEPLOY_SUCC_MESSAGE == 'short'
+        if: steps.deploy_stage.outcome == 'success' && vars.DEPLOY_SUCC_MESSAGE == 'short'
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
