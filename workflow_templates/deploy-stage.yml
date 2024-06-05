@@ -206,7 +206,7 @@ jobs:
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "${{ vars.DEP_RC_FAIL_HEAD }}",
+                    "text": "${{ vars.DEP_RC_UNCOM_HEAD }}",
                     "emoji": true
                   }
                 },
@@ -214,12 +214,12 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "${{ vars.DEP_RC_FAIL_BODY }}"
+                    "text": "${{ vars.DEP_RC_UNCOM_BODY }}"
                   }
                 },
                 {
                   "type": "image",
-                  "image_url": "${{ vars.DEP_RC_FAIL_IMAGE }}",
+                  "image_url": "${{ vars.DEP_RC_UNCOM_IMAGE }}",
                   "alt_text": "inspiration"
                 },
                 {
@@ -257,7 +257,7 @@ jobs:
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "${{ vars.DEP_RC_FAIL_HEAD }}",
+                    "text": "${{ vars.DEP_RC_UNCOM_HEAD }}",
                     "emoji": true
                   }
                 },
@@ -265,7 +265,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "${{ vars.DEP_RC_FAIL_BODY }}"
+                    "text": "${{ vars.DEP_RC_UNCOM_BODY }}"
                   }
                 },
                 {
@@ -303,7 +303,7 @@ jobs:
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "${{ vars.DEP_RC_FAIL_HEAD }}",
+                    "text": "${{ vars.DEP_RC_UNCOM_HEAD }}",
                     "emoji": true
                   }
                 },
@@ -311,12 +311,12 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "${{ vars.DEP_RC_FAIL_BODY }}"
+                    "text": "${{ vars.DEP_RC_UNCOM_BODY }}"
                   }
                 },
                 {
                   "type": "image",
-                  "image_url": "${{ vars.DEP_RC_FAIL_IMAGE }}",
+                  "image_url": "${{ vars.DEP_RC_UNCOM_IMAGE }}",
                   "alt_text": "inspiration"
                 },
                 {
@@ -368,7 +368,7 @@ jobs:
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "${{ vars.DEP_RC_FAIL_HEAD }}",
+                    "text": "${{ vars.DEP_RC_UNCOM_HEAD }}",
                     "emoji": true
                   }
                 },
@@ -376,7 +376,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "${{ vars.DEP_RC_FAIL_BODY }}"
+                    "text": "${{ vars.DEP_RC_UNCOM_BODY }}"
                   }
                 },
                 {
