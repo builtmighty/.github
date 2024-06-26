@@ -196,30 +196,47 @@ jobs:
           # For posting a rich message using Block Kit
           payload: |
             {
-              "text": "*🛑 Deployment Failed*\n============================\nGitHub Action build result: `${{ job.status }}`\nTriggered by: `${{ github.triggering_actor }}`\n${{ github.event.pull_request.html_url || github.event.head_commit.url }} \n\n",
               "blocks": [
-                {
-                  "type": "divider"
-                },
                 {
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "${{ vars.DEP_PROD_FAIL_HEAD }}",
+                    "text": "${{ vars.UNCOMMITTED_PROD_BRANCH_HEAD }}",
                     "emoji": true
                   }
+                },
+                {
+                  "type": "divider"
                 },
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "${{ vars.DEP_PROD_FAIL_BODY }}"
+                    "text": "${{ vars.UNCOMMITTED_PROD_BRANCH_BODY }}"
                   }
                 },
                 {
                   "type": "image",
-                  "image_url": "${{ vars.DEP_PROD_FAIL_IMAGE }}",
-                  "alt_text": "inspiration"
+                  "image_url": "${{ vars.UNCOMMITTED_PROD_BRANCH_IMAGE }}",
+                  "alt_text": "status"
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Don't know what to do with an uncommitted changes hotfix branch?"
+                  },
+                  "accessory": {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "📓 Read Documentation",
+                      "emoji": true
+                    },
+                    "value": "click_me_123",
+                    "url": "${{ vars.UNCOMMITTED_BRANCH_DOCS }}",
+                    "action_id": "button-action"
+                  }
                 },
                 {
                   "type": "section",
@@ -247,24 +264,41 @@ jobs:
           # For posting a rich message using Block Kit
           payload: |
             {
-              "text": "*🛑 Deployment Failed*\n============================\nGitHub Action build result: `${{ job.status }}`\nTriggered by: `${{ github.triggering_actor }}`\n${{ github.event.pull_request.html_url || github.event.head_commit.url }} \n\n",
               "blocks": [
-                {
-                  "type": "divider"
-                },
                 {
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "${{ vars.DEP_PROD_FAIL_HEAD }}",
+                    "text": "${{ vars.UNCOMMITTED_PROD_BRANCH_HEAD }}",
                     "emoji": true
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "${{ vars.UNCOMMITTED_PROD_BRANCH_BODY }}"
                   }
                 },
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "${{ vars.DEP_PROD_FAIL_BODY }}"
+                    "text": "Don't know what to do with an uncommitted changes hotfix branch?"
+                  },
+                  "accessory": {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "📓 Read Documentation",
+                      "emoji": true
+                    },
+                    "value": "click_me_123",
+                    "url": "${{ vars.UNCOMMITTED_BRANCH_DOCS }}",
+                    "action_id": "button-action"
                   }
                 },
                 {
@@ -293,51 +327,54 @@ jobs:
           # For posting a rich message using Block Kit
           payload: |
             {
-              "text": "*🛑 Deployment Failed*\n============================\nGitHub Action build result: `${{ job.status }}`\nTriggered by: `${{ github.triggering_actor }}`\n${{ github.event.pull_request.html_url || github.event.head_commit.url }} \n\n",
               "blocks": [
-                {
-                  "type": "divider"
-                },
                 {
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "${{ vars.DEP_PROD_UNCOM_HEAD }}",
+                    "text": "${{ vars.UNCOMMITTED_PROD_FAIL_HEAD }}",
                     "emoji": true
                   }
                 },
                 {
+                  "type": "divider"
+                },
+                {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "${{ vars.DEP_PROD_UNCOM_BODY }}"
+                    "text": "${{ vars.UNCOMMITTED_PROD_FAIL_BODY }}"
                   }
                 },
                 {
                   "type": "image",
-                  "image_url": "${{ vars.DEP_PROD_UNCOM_IMAGE }}",
-                  "alt_text": "inspiration"
+                  "image_url": "${{ vars.UNCOMMITTED_PROD_FAIL_IMAGE }}",
+                  "alt_text": "status"
                 },
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*WARNING*: There is uncommitted code on production. We were unable to capture it.\n\n🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🌳 *Uncommmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
+                    "text": "Don't know what to do when there is uncommitted code we couldn't capture?"
+                  },
+                  "accessory": {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "📓 Read Documentation",
+                      "emoji": true
+                    },
+                    "value": "click_me_123",
+                    "url": "${{ vars.UNCOMMITTED_FAIL_DOCS }}",
+                    "action_id": "button-action"
                   }
                 },
                 {
-                  "type": "rich_text",
-                  "elements": [
-                    {
-                      "type": "rich_text_section",
-                      "elements": [
-                        {
-                          "type": "usergroup",
-                          "usergroup_id": "S0568RB4WTT"
-                        }
-                      ]
-                    }
-                  ]
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🌳 *Uncommmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
+                  }
                 }
               ]
             }
@@ -358,46 +395,49 @@ jobs:
           # For posting a rich message using Block Kit
           payload: |
             {
-              "text": "*🛑 Deployment Failed*\n============================\nGitHub Action build result: `${{ job.status }}`\nTriggered by: `${{ github.triggering_actor }}`\n${{ github.event.pull_request.html_url || github.event.head_commit.url }} \n\n",
               "blocks": [
-                {
-                  "type": "divider"
-                },
                 {
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "${{ vars.DEP_PROD_UNCOM_HEAD }}",
+                    "text": "${{ vars.UNCOMMITTED_PROD_FAIL_HEAD }}",
                     "emoji": true
                   }
                 },
                 {
+                  "type": "divider"
+                },
+                {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "${{ vars.DEP_PROD_UNCOM_BODY }}"
+                    "text": "${{ vars.UNCOMMITTED_PROD_FAIL_BODY }}"
                   }
                 },
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*WARNING*: There is uncommitted code on production. We were unable to capture it.\n\n🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🌳 *Uncommmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
+                    "text": "Don't know what to do when there is uncommitted code we couldn't capture?"
+                  },
+                  "accessory": {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "📓 Read Documentation",
+                      "emoji": true
+                    },
+                    "value": "click_me_123",
+                    "url": "${{ vars.UNCOMMITTED_FAIL_DOCS }}",
+                    "action_id": "button-action"
                   }
                 },
                 {
-                  "type": "rich_text",
-                  "elements": [
-                    {
-                      "type": "rich_text_section",
-                      "elements": [
-                        {
-                          "type": "usergroup",
-                          "usergroup_id": "S0568RB4WTT"
-                        }
-                      ]
-                    }
-                  ]
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🌳 *Uncommmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
+                  }
                 }
               ]
             }
@@ -418,11 +458,7 @@ jobs:
           # For posting a rich message using Block Kit
           payload: |
             {
-              "text": "*🛑 Deployment Failed*\n============================\nGitHub Action build result: `${{ job.status }}`\nTriggered by: `${{ github.triggering_actor }}`\n${{ github.event.pull_request.html_url || github.event.head_commit.url }} \n\n",
               "blocks": [
-                {
-                  "type": "divider"
-                },
                 {
                   "type": "header",
                   "text": {
@@ -430,6 +466,9 @@ jobs:
                     "text": "${{ vars.DEP_PROD_FAIL_HEAD }}",
                     "emoji": true
                   }
+                },
+                {
+                  "type": "divider"
                 },
                 {
                   "type": "section",
@@ -441,13 +480,13 @@ jobs:
                 {
                   "type": "image",
                   "image_url": "${{ vars.DEP_PROD_FAIL_IMAGE }}",
-                  "alt_text": "inspiration"
+                  "alt_text": "status"
                 },
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*WARNING*: The deployment failed and not because of uncommitted code.\n\n🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🌳 *Uncommmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
+                    "text": "🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🌳 *Uncommmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
                   }
                 },
                 {
@@ -481,11 +520,7 @@ jobs:
           # For posting a rich message using Block Kit
           payload: |
             {
-              "text": "*🛑 Deployment Failed*\n============================\nGitHub Action build result: `${{ job.status }}`\nTriggered by: `${{ github.triggering_actor }}`\n${{ github.event.pull_request.html_url || github.event.head_commit.url }} \n\n",
               "blocks": [
-                {
-                  "type": "divider"
-                },
                 {
                   "type": "header",
                   "text": {
@@ -493,6 +528,9 @@ jobs:
                     "text": "${{ vars.DEP_PROD_FAIL_HEAD }}",
                     "emoji": true
                   }
+                },
+                {
+                  "type": "divider"
                 },
                 {
                   "type": "section",
@@ -505,7 +543,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*WARNING*: The deployment failed and not because of uncommitted code.\n\n🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🌳 *Uncommmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
+                    "text": "🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🌳 *Uncommmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
                   }
                 },
                 {
@@ -539,11 +577,7 @@ jobs:
           # For posting a rich message using Block Kit
           payload: |
             {
-              "text": "🚀 Production Deployment ✅: `${{ job.status }}`\nTriggered by: `${{ github.triggering_actor }}`\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}",
               "blocks": [
-                {
-                  "type": "divider"
-                },
                 {
                   "type": "header",
                   "text": {
@@ -551,6 +585,9 @@ jobs:
                     "text": "${{ vars.DEP_PROD_SUCC_HEAD }}",
                     "emoji": true
                   }
+                },
+                {
+                  "type": "divider"
                 },
                 {
                   "type": "section",
@@ -562,7 +599,7 @@ jobs:
                 {
                   "type": "image",
                   "image_url": "${{ vars.DEP_PROD_SUCC_IMAGE }}",
-                  "alt_text": "inspiration"
+                  "alt_text": "status"
                 },
                 {
                   "type": "section",
@@ -588,11 +625,7 @@ jobs:
           # For posting a rich message using Block Kit
           payload: |
             {
-              "text": "🚀 Production Deployment ✅: `${{ job.status }}`\nTriggered by: `${{ github.triggering_actor }}`\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}",
               "blocks": [
-                {
-                  "type": "divider"
-                },
                 {
                   "type": "header",
                   "text": {
@@ -602,11 +635,19 @@ jobs:
                   }
                 },
                 {
+                  "type": "divider"
+                },
+                {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
                     "text": "${{ vars.DEP_PROD_SUCC_BODY }}"
                   }
+                },
+                {
+                  "type": "image",
+                  "image_url": "${{ vars.DEP_PROD_SUCC_IMAGE }}",
+                  "alt_text": "status"
                 },
                 {
                   "type": "section",

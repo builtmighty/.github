@@ -127,7 +127,7 @@ jobs:
       # Write linting errors to Slack channel, long message.
       - name: Slack Linting Errors Notification - LONG
         id: slack_linting_failed_long
-        if: steps.super_linter.outcome != 'success' && vars.CHECK_FAIL_MESSAGE != 'short' && vars.CHECK_FAIL_MESSAGE != 'off'
+        if: steps.super_linter.outcome != 'success' && vars.LINT_FAIL_MESSAGE != 'short' && vars.LINT_FAIL_MESSAGE != 'off'
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -136,48 +136,65 @@ jobs:
           # Write errors.
           payload: |
             {
-              "text": "💩 Code Linting Failed. You cannot merge until these issues are resolved. View Pull Request: ${{ github.event.pull_request.html_url }}",
-            	"blocks": [
-            		{
-            			"type": "divider"
-            		},
-            		{
-            			"type": "header",
-            			"text": {
-            				"type": "plain_text",
-            				"text": "${{ vars.CC_PROD_FAIL_HEAD }}",
-            				"emoji": true
-            			}
-            		},
-            		{
-            			"type": "section",
-            			"text": {
-            				"type": "mrkdwn",
-            				"text": "${{ vars.CC_PROD_FAIL_BODY }}"
-            			}
-            		},
-            		{
-            			"type": "image",
-            			"image_url": "${{ vars.CC_PROD_FAIL_IMAGE }}",
-            			"alt_text": "inspiration"
-            		},
-            		{
-            			"type": "actions",
-            			"elements": [
-            				{
-            					"type": "button",
-            					"text": {
-            						"type": "plain_text",
-            						"text": "View Pull Request",
-            						"emoji": true
-            					},
-            					"value": "click_me_123",
-            					"url": "${{ github.event.pull_request.html_url || github.event.repository.html_url }}",
-            					"action_id": "actionId-0"
-            				}
-            			]
-            		}
-            	]
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "${{ vars.LINT_PROD_FAIL_HEAD }}",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "${{ vars.LINT_PROD_FAIL_BODY }}"
+                  }
+                },
+                {
+                  "type": "image",
+                  "image_url": "${{ vars.LINT_PROD_FAIL_IMAGE }}",
+                  "alt_text": "status"
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Don't know what to do when linting fails?"
+                  },
+                  "accessory": {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "📓 Read Documentation",
+                      "emoji": true
+                    },
+                    "value": "click_me_123",
+                    "url": "${{ vars.LINT_FAIL_DOCS }}",
+                    "action_id": "button-action"
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View Pull Request",
+                        "emoji": true
+                      },
+                      "value": "click_me_123",
+                      "url": "${{ github.event.pull_request.html_url || github.event.repository.html_url }}",
+                      "action_id": "actionId-0"
+                    }
+                  ]
+                }
+              ]
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
@@ -186,7 +203,7 @@ jobs:
       # Write linting errors to Slack channel, short message.
       - name: Slack Linting Errors Notification - SHORT
         id: slack_linting_failed_short
-        if: steps.super_linter.outcome != 'success' && vars.CHECK_FAIL_MESSAGE == 'short'
+        if: steps.super_linter.outcome != 'success' && vars.LINT_FAIL_MESSAGE == 'short'
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -195,33 +212,60 @@ jobs:
           # Write errors.
           payload: |
             {
-              "text": "💩 Code Linting Failed. You cannot merge until these issues are resolved. View Pull Request: ${{ github.event.pull_request.html_url }}",
-            	"blocks": [
-            		{
-            			"type": "header",
-            			"text": {
-            				"type": "plain_text",
-            				"text": "${{ vars.CC_PROD_FAIL_HEAD }}",
-            				"emoji": true
-            			}
-            		},
-            		{
-            			"type": "actions",
-            			"elements": [
-            				{
-            					"type": "button",
-            					"text": {
-            						"type": "plain_text",
-            						"text": "View Pull Request",
-            						"emoji": true
-            					},
-            					"value": "click_me_123",
-            					"url": "${{ github.event.pull_request.html_url || github.event.repository.html_url }}",
-            					"action_id": "actionId-0"
-            				}
-            			]
-            		}
-            	]
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "${{ vars.LINT_PROD_FAIL_HEAD }}",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "${{ vars.LINT_PROD_FAIL_BODY }}"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Don't know what to do when linting fails?"
+                  },
+                  "accessory": {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "📓 Read Documentation",
+                      "emoji": true
+                    },
+                    "value": "click_me_123",
+                    "url": "${{ vars.LINT_FAIL_DOCS }}",
+                    "action_id": "button-action"
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View Pull Request",
+                        "emoji": true
+                      },
+                      "value": "click_me_123",
+                      "url": "${{ github.event.pull_request.html_url || github.event.repository.html_url }}",
+                      "action_id": "actionId-0"
+                    }
+                  ]
+                }
+              ]
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
@@ -239,24 +283,41 @@ jobs:
           # For posting a rich message using Block Kit
           payload: |
             {
-              "text": "*👀🚨 Uncommitted Changes*\n============================\nThere are currently uncommited changes on production. Someone should take a look!\n\n",
               "blocks": [
-                {
-                  "type": "divider"
-                },
                 {
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "👀🚨 Uncommitted Changes on Production",
+                    "text": "🚨 Uncommitted Changes on Production",
                     "emoji": true
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "We took a look and there are currently uncommitted changes on production. *Someone should capture the changes before deploying.*"
                   }
                 },
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "There are currently uncommitted changes on production. Someone should take a look, before we try deploying!"
+                    "text": "Want to know how to grab uncommitted changes properly?"
+                  },
+                  "accessory": {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "📓 Read Documentation",
+                      "emoji": true
+                    },
+                    "value": "click_me_123",
+                    "url": "${{ vars.UNCOMMITTED_DOCS }}",
+                    "action_id": "button-action"
                   }
                 }
               ]
@@ -269,7 +330,7 @@ jobs:
       # Write success message to Slack channel, but in long form.
       - name: Slack Success Notification - LONG
         id: slack_success_long
-        if: steps.super_linter.outcome == 'success' && !github.event.pull_request.draft && vars.CHECK_SUCC_MESSAGE != 'short' && vars.CHECK_SUCC_MESSAGE != 'off' 
+        if: steps.super_linter.outcome == 'success' && !github.event.pull_request.draft && vars.LINT_SUCC_MESSAGE != 'short' && vars.LINT_SUCC_MESSAGE != 'off' 
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -278,48 +339,47 @@ jobs:
           # Write errors.
           payload: |
             {
-              "text": "✅ Success! You can now merge into the main branch. View Pull Request: ${{ github.event.pull_request.html_url }}",
-            	"blocks": [
-            		{
-            			"type": "divider"
-            		},
-            		{
-            			"type": "header",
-            			"text": {
-            				"type": "plain_text",
-            				"text": "${{ vars.CC_PROD_SUCC_HEAD }}",
-            				"emoji": true
-            			}
-            		},
-            		{
-            			"type": "section",
-            			"text": {
-            				"type": "mrkdwn",
-            				"text": "${{ vars.CC_PROD_SUCC_BODY }}"
-            			}
-            		},
-            		{
-            			"type": "image",
-            			"image_url": "${{ vars.CC_PROD_SUCC_IMAGE }}",
-            			"alt_text": "inspiration"
-            		},
-            		{
-            			"type": "actions",
-            			"elements": [
-            				{
-            					"type": "button",
-            					"text": {
-            						"type": "plain_text",
-            						"text": "View Pull Request",
-            						"emoji": true
-            					},
-            					"value": "click_me_123",
-            					"url": "${{ github.event.pull_request.html_url || github.event.repository.html_url }}",
-            					"action_id": "actionId-0"
-            				}
-            			]
-            		}
-            	]
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "${{ vars.LINT_PROD_SUCC_HEAD }}",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "${{ vars.LINT_PROD_SUCC_BODY }}"
+                  }
+                },
+                {
+                  "type": "image",
+                  "image_url": "${{ vars.LINT_PROD_SUCC_IMAGE }}",
+                  "alt_text": "status"
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "🔀 View Pull Request",
+                        "emoji": true
+                      },
+                      "value": "click_me_123",
+                      "url": "${{ github.event.pull_request.html_url || github.event.repository.html_url }}",
+                      "action_id": "actionId-0"
+                    }
+                  ]
+                }
+              ]
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
@@ -328,7 +388,7 @@ jobs:
       # Write success message to Slack channel, but in long form.
       - name: Slack Success Notification - SHORT
         id: slack_success_short
-        if: steps.super_linter.outcome  == 'success' && !github.event.pull_request.draft && vars.CHECK_SUCC_MESSAGE == 'short'
+        if: steps.super_linter.outcome  == 'success' && !github.event.pull_request.draft && vars.LINT_SUCC_MESSAGE == 'short'
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -337,36 +397,42 @@ jobs:
           # Write errors.
           payload: |
             {
-              "text": "✅ Success! You can now merge into the main branch. View Pull Request: ${{ github.event.pull_request.html_url }}",
-            	"blocks": [
-            		{
-            			"type": "divider"
-            		},
-            		{
-            			"type": "header",
-            			"text": {
-            				"type": "plain_text",
-            				"text": "${{ vars.CC_PROD_SUCC_HEAD }}",
-            				"emoji": true
-            			}
-            		},
-            		{
-            			"type": "actions",
-            			"elements": [
-            				{
-            					"type": "button",
-            					"text": {
-            						"type": "plain_text",
-            						"text": "View Pull Request",
-            						"emoji": true
-            					},
-            					"value": "click_me_123",
-            					"url": "${{ github.event.pull_request.html_url || github.event.repository.html_url }}",
-            					"action_id": "actionId-0"
-            				}
-            			]
-            		}
-            	]
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "${{ vars.LINT_PROD_SUCC_HEAD }}",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "${{ vars.LINT_PROD_SUCC_BODY }}"
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "🔀 View Pull Request",
+                        "emoji": true
+                      },
+                      "value": "click_me_123",
+                      "url": "${{ github.event.pull_request.html_url || github.event.repository.html_url }}",
+                      "action_id": "actionId-0"
+                    }
+                  ]
+                }
+              ]
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
