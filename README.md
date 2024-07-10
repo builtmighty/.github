@@ -57,9 +57,9 @@ Add the following Action secrets/variables to the repo, by going to the reposito
 
 ## Additional Resources
 
-- [General Documentation]([https://docs.github.com/en/codespaces](https://builtmighty.atlassian.net/wiki/spaces/BMH/pages/70353150/GitHub+Automated+Linting+Deployment))
+- [General Documentation](https://builtmighty.atlassian.net/wiki/spaces/BMH/pages/70353150/GitHub+Automated+Linting+Deployment)
 
-- [Setting Up Workflows]([https://docs.github.com/en/rest/reference/codespaces](https://builtmighty.atlassian.net/wiki/spaces/BMH/pages/71369624/Setting+Up+Workflows))
+- [Setting Up Workflows](https://builtmighty.atlassian.net/wiki/spaces/BMH/pages/71369624/Setting+Up+Workflows)
 
 - [Required Settings](https://builtmighty.atlassian.net/wiki/spaces/BMH/pages/71794695/Required+Settings)
 
