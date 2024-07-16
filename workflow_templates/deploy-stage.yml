@@ -89,7 +89,7 @@ jobs:
           # Connect and create the patch.
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.RC_SSH_PORT }} ${{ secrets.RC_SSH_USER }}@${{ secrets.RC_SSH_HOST }} "
             cd ${{ secrets.RC_REMOTE_WEB_ROOT }}
-            git diff > uncommitted_changes.patch
+            git diff --binary > uncommitted_changes.patch
           "
           # Download the patch file.
           scp -i ~/.ssh/id_rsa -P ${{ secrets.RC_SSH_PORT }} ${{ secrets.RC_SSH_USER }}@${{ secrets.RC_SSH_HOST }}:${{ secrets.RC_REMOTE_WEB_ROOT }}/uncommitted_changes.patch .
@@ -100,7 +100,9 @@ jobs:
             # SSH back in and try git stash show -p for the patch.
             ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.RC_SSH_PORT }} ${{ secrets.RC_SSH_USER }}@${{ secrets.RC_SSH_HOST }} "
               cd ${{ secrets.RC_REMOTE_WEB_ROOT }}
+              git stash
               git stash show -p > uncommitted_changes.patch
+              git stash apply
             "
             # Download the patch file.
             scp -i ~/.ssh/id_rsa -P ${{ secrets.RC_SSH_PORT }} ${{ secrets.RC_SSH_USER }}@${{ secrets.RC_SSH_HOST }}:${{ secrets.RC_REMOTE_WEB_ROOT }}/uncommitted_changes.patch .
