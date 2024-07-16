@@ -202,7 +202,7 @@ jobs:
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "${{ vars.UNCOMMITTED_PROD_BRANCH_HEAD }}",
+                    "text": "${{ vars.UNCOMMITTED_RC_BRANCH_HEAD }}",
                     "emoji": true
                   }
                 },
@@ -270,7 +270,7 @@ jobs:
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "${{ vars.UNCOMMITTED_PROD_BRANCH_HEAD }}",
+                    "text": "${{ vars.UNCOMMITTED_RC_BRANCH_HEAD }}",
                     "emoji": true
                   }
                 },
