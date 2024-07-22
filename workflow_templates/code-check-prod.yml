@@ -114,7 +114,7 @@ jobs:
 
       # Check if we can connect to the production server, on fail, exit.
       - name: Check SSH Connection to Production
-        if: ! contains(github.head_ref, 'skipdeploy') && vars.SKIP_PROD_DEPLOY != 'true'
+        if: ${{ ! contains(github.head_ref, 'skipdeploy') && vars.SKIP_PROD_DEPLOY != 'true' }}
         continue-on-error: true
         run: |
           ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "echo Successfully connected to production server."
@@ -123,7 +123,7 @@ jobs:
       ## 5. Checks production for uncommitted changes.
       # Check for uncommitted changes.
       - name: Check for Uncommitted Code on Production
-        if: steps.check_ssh.outcome == 'success' && ! contains(github.head_ref, 'skipdeploy') && vars.SKIP_PROD_DEPLOY != 'true'
+        if: ${{ steps.check_ssh.outcome == 'success' && ! contains(github.head_ref, 'skipdeploy') && vars.SKIP_PROD_DEPLOY != 'true' }}
         continue-on-error: true
         run: |
           ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "cd ${{ secrets.PROD_REMOTE_WEB_ROOT }} && git status -s" > ~/.ssh/git-status.txt
@@ -136,7 +136,7 @@ jobs:
       # Write linting errors to Slack channel, long message.
       - name: Slack Linting Errors Notification - LONG
         id: slack_linting_failed_long
-        if: steps.super_linter.outcome != 'success' && vars.LINT_FAIL_MESSAGE != 'short' && vars.LINT_FAIL_MESSAGE != 'off'
+        if: ${{ steps.super_linter.outcome != 'success' && vars.LINT_FAIL_MESSAGE != 'short' && vars.LINT_FAIL_MESSAGE != 'off' }}
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -212,7 +212,7 @@ jobs:
       # Write linting errors to Slack channel, short message.
       - name: Slack Linting Errors Notification - SHORT
         id: slack_linting_failed_short
-        if: steps.super_linter.outcome != 'success' && vars.LINT_FAIL_MESSAGE == 'short'
+        if: ${{ steps.super_linter.outcome != 'success' && vars.LINT_FAIL_MESSAGE == 'short' }}
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -283,7 +283,7 @@ jobs:
       # Post SSH connection error to Slack channel.
       - name: Slack SSH Failure Notification
         id: slack_ssh_failure
-        if: steps.check_ssh.outcome != 'success' && !contains(github.head_ref, 'skipdeploy') && vars.SKIP_PROD_DEPLOY != 'true'
+        if: ${{ steps.check_ssh.outcome != 'success' && !contains(github.head_ref, 'skipdeploy') && vars.SKIP_PROD_DEPLOY != 'true' }}
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -339,7 +339,7 @@ jobs:
       # Post uncommitted changes to Slack channel.
       - name: Slack Uncommitted Changes Notification
         id: slack_uncommitted_changes
-        if: steps.check_ssh.outcome == 'success' && steps.check_uncommitted.outcome != 'success' 
+        if: ${{ steps.check_ssh.outcome == 'success' && steps.check_uncommitted.outcome != 'success' }}
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -395,7 +395,7 @@ jobs:
       # Write success message to Slack channel, but in long form.
       - name: Slack Success Notification - LONG
         id: slack_success_long
-        if: steps.super_linter.outcome == 'success' && !github.event.pull_request.draft && vars.LINT_SUCC_MESSAGE != 'short' && vars.LINT_SUCC_MESSAGE != 'off' 
+        if: ${{ steps.super_linter.outcome == 'success' && !github.event.pull_request.draft && vars.LINT_SUCC_MESSAGE != 'short' && vars.LINT_SUCC_MESSAGE != 'off' }}
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -453,7 +453,7 @@ jobs:
       # Write success message to Slack channel, but in long form.
       - name: Slack Success Notification - SHORT
         id: slack_success_short
-        if: steps.super_linter.outcome  == 'success' && !github.event.pull_request.draft && vars.LINT_SUCC_MESSAGE == 'short'
+        if: ${{ steps.super_linter.outcome  == 'success' && !github.event.pull_request.draft && vars.LINT_SUCC_MESSAGE == 'short' }}
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -513,7 +513,7 @@ jobs:
       
       # Write errors to workflow job summary.
       - name: Display Linting Errors
-        if: steps.super_linter.outcome != 'success'
+        if: ${{ steps.super_linter.outcome != 'success' }}
         run: |
           # This command will print the linting errors and warnings to the GitHub Actions workflow summary
           echo 'You cannot merge until these issues are resolved.' >> $GITHUB_STEP_SUMMARY
@@ -523,7 +523,7 @@ jobs:
 
       # Write success message to workflow job summary
       - name: Write Success Message to Workflow Summary
-        if: steps.super_linter.outcome == 'success'
+        if: ${{ steps.super_linter.outcome == 'success' }}
         run: |
           echo "# 🎉 Code Successfully Checked" >> $GITHUB_STEP_SUMMARY
           echo "You are now clear to merge into the main branch, which will trigger a deployment to production." >> $GITHUB_STEP_SUMMARY
@@ -532,7 +532,7 @@ jobs:
       ## 8. Run final job status check.
       # Check if the job failed or succeeded.
       - name: Final Job Status Check
-        if: steps.super_linter.outcome == 'failure'
+        if: ${{ steps.super_linter.outcome == 'failure' }}
         run: |
           echo "Job failed. Please check the logs for more information."
           exit 1
