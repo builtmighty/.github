@@ -34,7 +34,7 @@ jobs:
   # Workflow job of code-check-prod.
   deploy-stage:
     # Only run the job if the PR is closed AND the PR is merged.
-    if: github.event.pull_request.merged == true && !contains(github.head_ref, 'skipdeploy') && vars.SKIP_STAGE_DEPLOY != 'true'
+    if: ${{ github.event.pull_request.merged == true && !contains(github.head_ref, 'skipdeploy') && vars.SKIP_STAGE_DEPLOY != 'true' }}
     # Runner to run
     runs-on: [Large-Runner-Ubuntu]
     permissions:
@@ -84,7 +84,7 @@ jobs:
       # Tries to capture via git diff, if that fails, tries git stash show -p.
       - name: Capture Uncommitted Code
         continue-on-error: true
-        if: steps.check_uncommitted.outcome == 'failure'
+        if: ${{ steps.check_uncommitted.outcome == 'failure' }}
         run: |
           # Connect and create the patch.
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.RC_SSH_PORT }} ${{ secrets.RC_SSH_USER }}@${{ secrets.RC_SSH_HOST }} "
@@ -124,7 +124,7 @@ jobs:
       ## 5. Applies the patch to a hotfix branch.
       - name: Apply Uncommitted Patch and Commit
         continue-on-error: true
-        if: steps.check_uncommitted.outcome == 'failure' && steps.capture_uncommitted.outcome == 'success'
+        if: ${{ steps.check_uncommitted.outcome == 'failure' && steps.capture_uncommitted.outcome == 'success' }}
         env:
           UNCOMMITTED_BRANCH: hotfix/staging/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
           GIT_REPO_URL: https://github.com/${{ github.repository }}
@@ -146,7 +146,7 @@ jobs:
       ## 6. Checks if the hotfix branch was created.
       - name: Check Hotfix Branch Exists
         continue-on-error: true
-        if: steps.check_uncommitted.outcome == 'failure' && steps.capture_uncommitted.outcome == 'success'
+        if: ${{ steps.check_uncommitted.outcome == 'failure' && steps.capture_uncommitted.outcome == 'success' }}
         run: |
           git fetch --all
           git branch -r | grep hotfix/staging/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
@@ -155,7 +155,7 @@ jobs:
       ## 7. Updates staging to hotfix branch.
       - name: Pull Hotfix Branch to Staging
         continue-on-error: true
-        if: steps.check_uncommitted.outcome == 'failure' && steps.capture_uncommitted.outcome == 'success' && steps.check_hotfix.outcome == 'success'
+        if: ${{ steps.check_uncommitted.outcome == 'failure' && steps.capture_uncommitted.outcome == 'success' && steps.check_hotfix.outcome == 'success' }}
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           DEPLOY_PAT: ${{ secrets.DEPLOY_WORKFLOW_PAT }}
@@ -172,7 +172,7 @@ jobs:
       ## 8. Deploys code, if no uncommitted code was found.
       - name: Deploy to Staging
         continue-on-error: true
-        if: steps.check_uncommitted.outcome == 'success'
+        if: ${{ steps.check_uncommitted.outcome == 'success' }}
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           DEPLOY_PAT: ${{ secrets.DEPLOY_WORKFLOW_PAT }}
@@ -190,7 +190,7 @@ jobs:
       # Post uncommitted branch to Slack channel - LONG.
       - name: Slack Uncommitted Branch Notification - Long
         id: slack_uncommitted_long
-        if: steps.check_uncommitted.outcome == 'failure' && steps.check_hotfix.outcome == 'success' && vars.DEPLOY_FAIL_MESSAGE != 'short' && vars.DEPLOY_FAIL_MESSAGE != 'off'
+        if: ${{ steps.check_uncommitted.outcome == 'failure' && steps.check_hotfix.outcome == 'success' && vars.DEPLOY_FAIL_MESSAGE != 'short' && vars.DEPLOY_FAIL_MESSAGE != 'off' }}
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -258,7 +258,7 @@ jobs:
       # Post uncommitted branch to Slack channel - SHORT.
       - name: Slack Uncommitted Branch Notification - Short
         id: slack_uncommitted_short
-        if: steps.check_uncommitted.outcome == 'failure' && steps.check_hotfix.outcome == 'success' && vars.DEPLOY_FAIL_MESSAGE == 'short'
+        if: ${{ steps.check_uncommitted.outcome == 'failure' && steps.check_hotfix.outcome == 'success' && vars.DEPLOY_FAIL_MESSAGE == 'short' }}
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -321,7 +321,7 @@ jobs:
       # Post uncommitted changes to Slack channel - LONG.
       - name: Slack Uncommitted Changes Notification - Long
         id: slack_uncommitted_changes_long
-        if: steps.check_uncommitted.outcome == 'failure' && steps.check_hotfix.outcome == 'failure' && vars.DEPLOY_FAIL_MESSAGE != 'short' && vars.DEPLOY_FAIL_MESSAGE != 'off'
+        if: ${{ steps.check_uncommitted.outcome == 'failure' && steps.check_hotfix.outcome == 'failure' && vars.DEPLOY_FAIL_MESSAGE != 'short' && vars.DEPLOY_FAIL_MESSAGE != 'off' }}
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -389,7 +389,7 @@ jobs:
       # Post uncommitted changes to Slack channel - SHORT.
       - name: Slack Uncommitted Branch Notification - Short
         id: slack_uncommitted_changes_short
-        if: steps.check_uncommitted.outcome == 'failure' && steps.check_hotfix.outcome == 'failure' && vars.DEPLOY_FAIL_MESSAGE == 'short'
+        if: ${{ steps.check_uncommitted.outcome == 'failure' && steps.check_hotfix.outcome == 'failure' && vars.DEPLOY_FAIL_MESSAGE == 'short' }}
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -452,7 +452,7 @@ jobs:
       # Slack deployment failure notification - LONG.
       - name: Slack Failure Notification - Long
         id: slack_failure_long
-        if: steps.deploy_stage.outcome == 'failure' && vars.DEPLOY_FAIL_MESSAGE != 'short' && vars.DEPLOY_FAIL_MESSAGE != 'off'
+        if: ${{ steps.deploy_stage.outcome == 'failure' && vars.DEPLOY_FAIL_MESSAGE != 'short' && vars.DEPLOY_FAIL_MESSAGE != 'off' }}
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -514,7 +514,7 @@ jobs:
       # Slack deployment failure notification - SHORT.
       - name: Slack Failure Notification - Short
         id: slack_failure_short
-        if: steps.deploy_stage.outcome == 'failure' && vars.DEPLOY_FAIL_MESSAGE != 'short' && vars.DEPLOY_FAIL_MESSAGE != 'off'
+        if: ${{ steps.deploy_stage.outcome == 'failure' && vars.DEPLOY_FAIL_MESSAGE != 'short' && vars.DEPLOY_FAIL_MESSAGE != 'off' }}
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -571,7 +571,7 @@ jobs:
       # Slack deployment success notification - LONG.
       - name: Slack Success Notification - Long
         id: slack_success_long
-        if: steps.deploy_stage.outcome == 'success' && vars.DEPLOY_SUCC_MESSAGE != 'short' && vars.DEPLOY_SUCC_MESSAGE != 'off'
+        if: ${{ steps.deploy_stage.outcome == 'success' && vars.DEPLOY_SUCC_MESSAGE != 'short' && vars.DEPLOY_SUCC_MESSAGE != 'off' }}
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -621,7 +621,7 @@ jobs:
       # Slack deployment success notification - SHORT.
       - name: Slack Success Notification - Short
         id: slack_success_short
-        if: steps.deploy_stage.outcome == 'success' && vars.DEPLOY_SUCC_MESSAGE == 'short'
+        if: ${{ steps.deploy_stage.outcome == 'success' && vars.DEPLOY_SUCC_MESSAGE == 'short' }}
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -664,7 +664,7 @@ jobs:
       ## 10. Run final job status check.
       # Check if the job failed or succeeded.
       - name: Final Job Status Check
-        if: steps.check_uncommitted.outcome == 'failure' || steps.deploy_stage.outcome == 'failure'
+        if: ${{ steps.check_uncommitted.outcome == 'failure' || steps.deploy_stage.outcome == 'failure' }}
         run: |
           echo "Job failed. Please check the logs for more information."
           exit 1
