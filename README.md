@@ -18,7 +18,7 @@ This repo is used to automate our CI/CD pipelines using GitHub Actions. It sets 
 
 ## Adding to Repo
 
-To add the CI/CD GitHub Actions to a repo, run the following command in terminal to add the `.github/workflows` folder to the root of your repository:
+To add the CI/CD GitHub Actions to a repo, run the following command in the terminal to add the `.github/workflows` folder to the root of your repository:
 
 > **Replace the following placeholders with your own values:**
 
@@ -26,7 +26,7 @@ To add the CI/CD GitHub Actions to a repo, run the following command in terminal
 - `<your-personal-access-token>`: Your GitHub Personal Access Token (PAT)
 
 ```bash
-git clone https://<github_username>:<github_personal_access_token>@github.com/builtmighty/.github.git && cd .github && rm -rf .git/ PULL_REQUEST_TEMPLATE.md rulesets/ && mkdir workflows && cd workflow_templates && mv * ../workflows && cd ../ && rm -rf workflow_templates && cd .. && git add .github && git commit -S -m "⚙️ Added CI/CD" && git push origin main
+git clone https://<github_username>:<github_personal_access_token>@github.com/builtmighty/.github.git && cd .github && rm -rf .git/ PULL_REQUEST_TEMPLATE.md rulesets/ && mkdir workflows && cd workflow_templates && mv * ../workflows && cd ../ && rm -rf workflow_templates && cd .. && rm -rf .github/README.md && git add .github && git commit -S -m "⚙️ Added CI/CD" && git push origin main
 ```
 
 After running the command, you should see the `.github/workflows` folder added to your repository. Now, you will need to add the required Action secrets and variables. See the [Actions Secrets](#actions-secrets) section below for more information.
