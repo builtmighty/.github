@@ -129,6 +129,11 @@ jobs:
           UNCOMMITTED_BRANCH: hotfix/staging/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
           GIT_REPO_URL: https://github.com/${{ github.repository }}
         run: |
+          git apply --check uncommitted_changes.patch
+          if [ $? -ne 0 ]; then
+              echo "Patch cannot be applied cleanly"
+              exit 1
+          fi
           git apply uncommitted_changes.patch
           git config core.filemode false && sudo chown -R $(whoami) . && chown -R $(whoami) .
           git config --global gpg.format ssh
