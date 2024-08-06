@@ -164,6 +164,7 @@ jobs:
           ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
             cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
             git reset --hard
+            git clean -fd
             git checkout -b ${{ env.UNCOMMITTED_BRANCH }}
             git pull https://${{ vars.DEPLOY_USER }}:${{ env.DEPLOY_PAT }}@${{ env.GIT_REPO_URL }} ${{ env.UNCOMMITTED_BRANCH }}
           "
@@ -181,6 +182,7 @@ jobs:
             cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
             git checkout ${{ env.DEFAULT_BRANCH }}
             git reset --hard
+            git clean -fd
             git pull https://${{ vars.DEPLOY_USER }}:${{ env.DEPLOY_PAT }}@${{ env.GIT_REPO_URL }} ${{ env.DEFAULT_BRANCH }}
           "
         id: deploy_prod
