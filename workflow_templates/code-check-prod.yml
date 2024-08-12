@@ -57,25 +57,52 @@ jobs:
       # You can override these rules by setting a repo level variable labelled STYLELINTRC.
       - name: Create StyleLint Config File
         run: |
-            echo '${{ vars.STYLELINTRC }}' > ${{ env._LINTER_RULES_DIR }}/.stylelintrc.json
+            if [ -f .stylelintrc.json ]; then
+              echo "Found .stylelintrc.json file in the repo."
+              cp .stylelintrc.json ${{ env._LINTER_RULES_DIR }}/.stylelintrc.json
+            else
+              echo "No .stylelintrc.json file found in the repo. Using default rules."
+              echo '${{ vars.STYLELINTRC }}' > ${{ env._LINTER_RULES_DIR }}/.stylelintrc.json
+            fi
 
       # Create stylelint ignore file
       # You can override these rules by setting a repo level variable labelled STYLELINTIGNORE.
       - name: Create StyleLint Ignore File
         run: |
-            echo '${{ vars.STYLELINTIGNORE }}' > .stylelintignore
+            # Check if .stylelintignore file exists in the repo
+            if [ -f .stylelintignore ]; then
+              echo "Found .stylelintignore file in the repo."
+              cp .stylelintignore ${{ env._LINTER_RULES_DIR }}/.stylelintignore
+            else
+              echo "No .stylelintignore file found in the repo. Using default rules."
+              echo '${{ vars.STYLELINTIGNORE }}' > ${{ env._LINTER_RULES_DIR }}/.stylelintignore
+            fi
 
       # Only Check for JS Fatal Syntax Errors, Remove Step or add rules to lint JS Code Styling/Structure
       # You can override these rules by setting a repo level variable labelled ESLINTRC.
       - name: Create ESLint Config File
         run: |
-          echo '${{ vars.ESLINTRC }}' > ${{ env._LINTER_RULES_DIR }}/.eslintrc.json
+          # Check if .eslintrc.json file exists in the repo
+          if [ -f .eslintrc.json ]; then
+            echo "Found .eslintrc.json file in the repo."
+            cp .eslintrc.json ${{ env._LINTER_RULES_DIR }}/.eslintrc.json
+          else
+            echo "No .eslintrc.json file found in the repo. Using default rules."
+            echo '${{ vars.ESLINTRC }}' > ${{ env._LINTER_RULES_DIR }}/.eslintrc.json
+          fi
 
       # Create ESLint ignore file
       # You can override these rules by setting a repo level variable labelled ESLINTIGNORE.
       - name: Create ESLint Ignore File
         run: |
-            echo '${{ vars.ESLINTIGNORE }}' > .eslintignore
+            # Check if .eslintignore file exists in the repo
+            if [ -f .eslintignore ]; then
+              echo "Found .eslintignore file in the repo."
+              cp .eslintignore ${{ env._LINTER_RULES_DIR }}/.eslintignore
+            else
+              echo "No .eslintignore file found in the repo. Using default rules."
+              echo '${{ vars.ESLINTIGNORE }}' > ${{ env._LINTER_RULES_DIR }}/.eslintignore
+            fi
 
       ## 3. Lints the code.
       # Run Super Linter ( Lints: PHP, CSS, JSON, GH Actions, JS, HTML)
