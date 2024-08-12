@@ -31,7 +31,7 @@ on:
 # Workflow jobs.
 jobs:
   # Workflow job of code-check-prod.
-  deploy-stage:
+  deploy-prod:
     # Only run the job if the PR is closed AND the PR is merged.
     if: ${{ github.event.pull_request.merged == true && !contains(github.head_ref, 'skipdeploy') && vars.SKIP_PROD_DEPLOY != 'true' }}
     # Runner to run
