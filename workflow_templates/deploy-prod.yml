@@ -192,6 +192,25 @@ jobs:
           "
         id: deploy_prod
 
+      # Platform deploy.
+      - name: Platform Scripts
+        if: ${{ steps.deploy_prod.outcome == 'success' && vars.PLATFORM == 'laravel' }}
+        run: |
+          if [[ -z "${{ vars.ARTISAN }}" ]]; then
+            ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
+              cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
+              php artisan migrate --force
+              npm ci && npm run prod
+              composer install
+              php artisan optimize:clear
+            "
+          else
+            ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
+              cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
+              ${{ vars.ARTISAN }}
+            "
+          fi
+
       ## 9. Slack notifications.
       # Post uncommitted branch to Slack channel - LONG.
       - name: Slack Uncommitted Branch Notification - Long
