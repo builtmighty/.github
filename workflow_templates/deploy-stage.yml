@@ -211,6 +211,7 @@ jobs:
               ${{ vars.ARTISAN }}
             "
           fi
+        id: platform_scripts
 
       ## 9. Slack notifications.
       # Post uncommitted branch to Slack channel - LONG.
