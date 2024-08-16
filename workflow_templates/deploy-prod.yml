@@ -208,6 +208,7 @@ jobs:
             ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
               cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
               ${{ vars.ARTISAN }}
+              php artisan optimize:clear
             "
           fi
         id: platform_scripts
