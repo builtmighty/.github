@@ -197,27 +197,21 @@ jobs:
       - name: Platform Scripts
         if: ${{ steps.deploy_stage.outcome == 'success' && ( vars.PLATFORM == 'laravel' || vars.PLATFORM == 'wordpress' ) }}
         run: |
-          if [ -z "${{ vars.ARTISAN }}" ]; then
-            ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
-              cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
-              php artisan migrate --force
-              npm ci && npm run dev
-              composer install
-              php artisan optimize:clear
-            "
-          else
-            ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
-              cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
-              ${{ vars.ARTISAN }}
-            "
-          fi
-          if [ -z "${{ vars.WORDPRESS }}" ]; then
+          if [ -z "${{ vars.BUILDSCRIPTS }}" ]; then
             echo "Nothing to do here."
           else
-            ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
-              cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
-              ${{ vars.WORDPRESS }}
-            "
+            if [ "${{ vars.PLATFORM" = "laravel" ]; then
+              ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
+                cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
+                ${{ vars.BUILDSCRIPTS }}
+                php artisan optimize:clear
+              "
+            else
+              ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
+                cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
+                ${{ vars.BUILDSCRIPTS }}
+              "
+            fi
           fi
         id: platform_scripts
 
