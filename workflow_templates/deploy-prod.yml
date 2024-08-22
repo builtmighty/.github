@@ -194,7 +194,7 @@ jobs:
 
       # Platform deploy.
       - name: Platform Scripts
-        if: ${{ steps.deploy_prod.outcome == 'success' && vars.PLATFORM == 'laravel' || vars.PLATFORM == 'wordpress' }}
+        if: ${{ steps.deploy_prod.outcome == 'success' && ( vars.PLATFORM == 'laravel' || vars.PLATFORM == 'wordpress' ) }}
         run: |
           if [ -z "${{ vars.ARTISAN }}" ]; then
             ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
