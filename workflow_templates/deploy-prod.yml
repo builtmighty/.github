@@ -194,9 +194,9 @@ jobs:
 
       # Platform deploy.
       - name: Platform Scripts
-        if: ${{ steps.deploy_prod.outcome == 'success' && vars.PLATFORM == 'laravel' }}
+        if: ${{ steps.deploy_prod.outcome == 'success' && vars.PLATFORM == 'laravel' || vars.PLATFORM == 'wordpress' }}
         run: |
-          if [[ -z "${{ vars.ARTISAN }}" ]]; then
+          if [ -z "${{ vars.ARTISAN }}" ]; then
             ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
               cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
               php artisan migrate --force
@@ -209,6 +209,14 @@ jobs:
               cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
               ${{ vars.ARTISAN }}
               php artisan optimize:clear
+            "
+          fi
+          if [ -z "${{ vars.WORDPRESS }}" ]; then
+            echo "Nothing to do here."
+          else
+            ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
+              cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
+              ${{ vars.WORDPRESS }}
             "
           fi
         id: platform_scripts
