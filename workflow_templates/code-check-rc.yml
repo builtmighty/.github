@@ -56,51 +56,51 @@ jobs:
           mkdir -p ${{ env._LINTER_RULES_DIR }}
 
       # Setup Config Files for stylelint (CSS,SASS,LESS)
-      # You can override these rules by setting a repo level variable labelled STYLELINTRC.
+      # You can override these rules by setting a repo-level variable labeled STYLELINTRC.
       - name: Create StyleLint Config File
         run: |
-            if [ -f .stylelintrc.json ]; then
-              echo "Found .stylelintrc.json file in the repo."
-              cp .stylelintrc.json ${{ env._LINTER_RULES_DIR }}/.stylelintrc.json
+            if [ -f .github/config/.stylelintrc.json ]; then
+              echo "Found stylelintrc.json file in the repo."
+              cp .github/config/.stylelintrc.json ${{ env._LINTER_RULES_DIR }}/.stylelintrc.json
             else
               echo "No .stylelintrc.json file found in the repo. Using default rules."
               echo '${{ vars.STYLELINTRC }}' > ${{ env._LINTER_RULES_DIR }}/.stylelintrc.json
             fi
 
       # Create stylelint ignore file
-      # You can override these rules by setting a repo level variable labelled STYLELINTIGNORE.
+      # You can override these rules by setting a repo-level variable labeled STYLELINTIGNORE.
       - name: Create StyleLint Ignore File
         run: |
-            # Check if .stylelintignore file exists in the repo
-            if [ -f .stylelintignore ]; then
-              echo "Found .stylelintignore file in the repo."
-              cp .stylelintignore ${{ env._LINTER_RULES_DIR }}/.stylelintignore
+            # Check if .stylelintignore file exists .github/config/.
+            if [ -f .github/config/.stylelintignore ]; then
+              echo "Found stylelintignore file in the repo."
+              cp .github/config/.stylelintignore ${{ env._LINTER_RULES_DIR }}/.stylelintignore
             else
               echo "No .stylelintignore file found in the repo. Using default rules."
               echo '${{ vars.STYLELINTIGNORE }}' > ${{ env._LINTER_RULES_DIR }}/.stylelintignore
             fi
 
-      # Only Check for JS Fatal Syntax Errors, Remove Step or add rules to lint JS Code Styling/Structure
-      # You can override these rules by setting a repo level variable labelled ESLINTRC.
+      # Only Check for JS Fatal Syntax Errors, Remove Steps or add rules to lint JS Code Styling/Structure
+      # You can override these rules by setting a repo-level variable labeled ESLINTRC.
       - name: Create ESLint Config File
         run: |
-          # Check if .eslintrc.json file exists in the repo
+          # Check if .github/config/.eslintrc.json file exists in the repo
           if [ -f .eslintrc.json ]; then
-            echo "Found .eslintrc.json file in the repo."
-            cp .eslintrc.json ${{ env._LINTER_RULES_DIR }}/.eslintrc.json
+            echo "Found eslintrc.json file in the repo."
+            cp .github/config/.eslintrc.json ${{ env._LINTER_RULES_DIR }}/.eslintrc.json
           else
             echo "No .eslintrc.json file found in the repo. Using default rules."
             echo '${{ vars.ESLINTRC }}' > ${{ env._LINTER_RULES_DIR }}/.eslintrc.json
           fi
 
       # Create ESLint ignore file
-      # You can override these rules by setting a repo level variable labelled ESLINTIGNORE.
+      # You can override these rules by setting a repo-level variable labeled ESLINTIGNORE.
       - name: Create ESLint Ignore File
         run: |
             # Check if .eslintignore file exists in the repo
-            if [ -f .eslintignore ]; then
-              echo "Found .eslintignore file in the repo."
-              cp .eslintignore ${{ env._LINTER_RULES_DIR }}/.eslintignore
+            if [ -f .github/config/.eslintignore ]; then
+              echo "Found eslintignore file in the repo."
+              cp .github/config/.eslintignore ${{ env._LINTER_RULES_DIR }}/.eslintignore
             else
               echo "No .eslintignore file found in the repo. Using default rules."
               echo '${{ vars.ESLINTIGNORE }}' > ${{ env._LINTER_RULES_DIR }}/.eslintignore
