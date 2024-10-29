@@ -42,6 +42,7 @@ jobs:
       statuses: write
       pull-requests: write
       issues: write
+      deployments: write
 
     # Steps for the workflow.
     steps:
@@ -50,6 +51,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      # Start a deployment.
+      - uses: chrnorm/deployment-action@v2
+        name: Create GitHub Deployment
+        id: github_deployment
+        with:
+          token: '${{ github.token }}'
+          environment-url: ${{ vars.DEPLOY_USER }}
+          environment: production
 
       ## 2. Sets up deployment keys.
       # Setup Deployment SSH Key
@@ -213,6 +223,26 @@ jobs:
             fi
           fi
         id: platform_scripts
+
+      # Deploy Success Status.
+      - name: Successful GitHub Deployment
+        if: ${{ steps.deploy_prod.outcome == 'success' }}
+        uses: chrnorm/deployment-status@v2
+        with:
+          token: '${{ github.token }}'
+          environment-url: ${{ steps.github_deployment.outputs.environment_url }}
+          deployment-id: ${{ steps.github_deployment.outputs.deployment_id }}
+          state: 'success'
+
+      # Deploy Failure Status.
+      - name: Failed GitHub Deployment
+        if: ${{ steps.check_uncommitted.outcome == 'failure' || steps.deploy_prod.outcome == 'failure' }}
+        uses: chrnorm/deployment-status@v2
+        with:
+          token: '${{ github.token }}'
+          environment-url: ${{ steps.github_deployment.outputs.environment_url }}
+          deployment-id: ${{ steps.github_deployment.outputs.deployment_id }}
+          state: 'failure'
 
       ## 9. Slack notifications.
       # Post uncommitted branch to Slack channel - LONG.
