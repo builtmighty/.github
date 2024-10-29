@@ -263,7 +263,7 @@ jobs:
       # Write success message to Slack channel, but in long form.
       - name: Slack Success Notification
         id: slack_success
-        if: ${{ steps.super_linter.outcome == 'success' && !github.event.pull_request.draft && vars.LINT_SUCC_MESSAGE  != 'short' && vars.LINT_SUCC_MESSAGE  != 'off' }}
+        if: ${{ steps.super_linter.outcome == 'success' && !github.event.pull_request.draft && vars.LINT_SUCC_MESSAGE != 'short' && vars.LINT_SUCC_MESSAGE  != 'off' }}
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
