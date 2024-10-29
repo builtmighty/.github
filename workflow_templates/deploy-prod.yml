@@ -9,7 +9,7 @@
 # 4. Captures uncommitted code, in the form of a patch.
 # 5. Applies the patch to a hotfix branch.
 # 6. Checks if the hotfix branch was created.
-# 7. Updates staging to hotfix branch.
+# 7. Updates production to hotfix branch.
 # 8. Deploys code, if no uncommitted code was found.
 # 9. Slack notifications.
 # 10. Run final job status check.
@@ -58,7 +58,7 @@ jobs:
         id: github_deployment
         with:
           token: '${{ github.token }}'
-          environment-url: ${{ vars.DEPLOY_USER }}
+          environment-url: ${{ vars.PRODUCTION_URL }}
           environment: production
 
       ## 2. Sets up deployment keys.
@@ -245,10 +245,10 @@ jobs:
           state: 'failure'
 
       ## 9. Slack notifications.
-      # Post uncommitted branch to Slack channel - LONG.
-      - name: Slack Uncommitted Branch Notification - Long
-        id: slack_uncommitted_long
-        if: ${{ steps.check_uncommitted.outcome == 'failure' && steps.check_hotfix.outcome == 'success' && vars.DEPLOY_FAIL_MESSAGE != 'short' && vars.DEPLOY_FAIL_MESSAGE != 'off' }}
+      # Post uncommitted branch to Slack channel.
+      - name: Slack Uncommitted Branch Notification
+        id: slack_uncommitted
+        if: ${{ steps.check_uncommitted.outcome == 'failure' && steps.check_hotfix.outcome == 'success' }}
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -257,54 +257,19 @@ jobs:
           # For posting a rich message using Block Kit
           payload: |
             {
-              "blocks": [
+              "text":"🚩 Uncommitted Code on Production",
+              "attachments":[
                 {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "${{ vars.UNCOMMITTED_PROD_BRANCH_HEAD }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "divider"
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "${{ vars.UNCOMMITTED_PROD_BRANCH_BODY }}"
-                  }
-                },
-                {
-                  "type": "image",
-                  "image_url": "${{ vars.UNCOMMITTED_PROD_BRANCH_IMAGE }}",
-                  "alt_text": "status"
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Don't know what to do with an uncommitted changes hotfix branch?"
-                  },
-                  "accessory": {
-                    "type": "button",
-                    "text": {
-                      "type": "plain_text",
-                      "text": "📓 Read Documentation",
-                      "emoji": true
-                    },
-                    "value": "click_me_123",
-                    "url": "${{ vars.UNCOMMITTED_BRANCH_DOCS }}",
-                    "action_id": "button-action"
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🌳 *Uncommmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
-                  }
+                  "color":"#d0241b",
+                  "blocks": [
+                    {
+                      "type": "section",
+                      "text": {
+                        "type": "mrkdwn",
+                        "text": "*🚩 Uncommitted Code on Production* | Check out the uncommitted code in this new branch and check if it needs to be merged into the default branch. <${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|🔴 Uncommitted Code Branch>"
+                      }
+                    }
+                  ]
                 }
               ]
             }
@@ -313,10 +278,10 @@ jobs:
           UNCOMMITTED_BRANCH: hotfix/production/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
           GIT_REPO_URL: https://github.com/${{ github.repository }}
 
-      # Post uncommitted branch to Slack channel - SHORT.
-      - name: Slack Uncommitted Branch Notification - Short
-        id: slack_uncommitted_short
-        if: ${{ steps.check_uncommitted.outcome == 'failure' && steps.check_hotfix.outcome == 'success' && vars.DEPLOY_FAIL_MESSAGE == 'short' }}
+      # Post uncommitted changes to Slack channel.
+      - name: Slack Uncommitted Changes Notification
+        id: slack_uncommitted_changes
+        if: ${{ steps.check_uncommitted.outcome == 'failure' && steps.check_hotfix.outcome == 'failure' }}
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -325,49 +290,19 @@ jobs:
           # For posting a rich message using Block Kit
           payload: |
             {
-              "blocks": [
+              "text":"🚩 Uncommitted Code on Production",
+              "attachments":[
                 {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "${{ vars.UNCOMMITTED_PROD_BRANCH_HEAD }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "divider"
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "${{ vars.UNCOMMITTED_PROD_BRANCH_BODY }}"
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Don't know what to do with an uncommitted changes hotfix branch?"
-                  },
-                  "accessory": {
-                    "type": "button",
-                    "text": {
-                      "type": "plain_text",
-                      "text": "📓 Read Documentation",
-                      "emoji": true
-                    },
-                    "value": "click_me_123",
-                    "url": "${{ vars.UNCOMMITTED_BRANCH_DOCS }}",
-                    "action_id": "button-action"
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🌳 *Uncommmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
-                  }
+                  "color":"#d0241b",
+                  "blocks": [
+                    {
+                      "type": "section",
+                      "text": {
+                        "type": "mrkdwn",
+                        "text": "*🚩 Uncommitted Code on Production* | We were unable to grab it though. Find out what to do. <${{ vars.UNCOMMITTED_FAIL_DOCS }}|📓 Read Documentation>"
+                      }
+                    }
+                  ]
                 }
               ]
             }
@@ -376,141 +311,10 @@ jobs:
           UNCOMMITTED_BRANCH: hotfix/production/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
           GIT_REPO_URL: https://github.com/${{ github.repository }}
 
-      # Post uncommitted changes to Slack channel - LONG.
-      - name: Slack Uncommitted Changes Notification - Long
-        id: slack_uncommitted_changes_long
-        if: ${{ steps.check_uncommitted.outcome == 'failure' && steps.check_hotfix.outcome == 'failure' && vars.DEPLOY_FAIL_MESSAGE != 'short' && vars.DEPLOY_FAIL_MESSAGE != 'off' }}
-        uses: slackapi/slack-github-action@v1.25.0
-        with:
-          # Slack channel id, channel name, or user id to post message.
-          # See also: https://api.slack.com/methods/chat.postMessage#channels
-          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
-          # For posting a rich message using Block Kit
-          payload: |
-            {
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "${{ vars.UNCOMMITTED_PROD_FAIL_HEAD }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "divider"
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "${{ vars.UNCOMMITTED_PROD_FAIL_BODY }}"
-                  }
-                },
-                {
-                  "type": "image",
-                  "image_url": "${{ vars.UNCOMMITTED_PROD_FAIL_IMAGE }}",
-                  "alt_text": "status"
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Don't know what to do when there is uncommitted code we couldn't capture?"
-                  },
-                  "accessory": {
-                    "type": "button",
-                    "text": {
-                      "type": "plain_text",
-                      "text": "📓 Read Documentation",
-                      "emoji": true
-                    },
-                    "value": "click_me_123",
-                    "url": "${{ vars.UNCOMMITTED_FAIL_DOCS }}",
-                    "action_id": "button-action"
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🌳 *Uncommmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
-                  }
-                }
-              ]
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
-          UNCOMMITTED_BRANCH: hotfix/production/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
-          GIT_REPO_URL: https://github.com/${{ github.repository }}
-
-      # Post uncommitted changes to Slack channel - SHORT.
-      - name: Slack Uncommitted Branch Notification - Short
-        id: slack_uncommitted_changes_short
-        if: ${{ steps.check_uncommitted.outcome == 'failure' && steps.check_hotfix.outcome == 'failure' && vars.DEPLOY_FAIL_MESSAGE == 'short' }}
-        uses: slackapi/slack-github-action@v1.25.0
-        with:
-          # Slack channel id, channel name, or user id to post message.
-          # See also: https://api.slack.com/methods/chat.postMessage#channels
-          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
-          # For posting a rich message using Block Kit
-          payload: |
-            {
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "${{ vars.UNCOMMITTED_PROD_FAIL_HEAD }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "divider"
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "${{ vars.UNCOMMITTED_PROD_FAIL_BODY }}"
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Don't know what to do when there is uncommitted code we couldn't capture?"
-                  },
-                  "accessory": {
-                    "type": "button",
-                    "text": {
-                      "type": "plain_text",
-                      "text": "📓 Read Documentation",
-                      "emoji": true
-                    },
-                    "value": "click_me_123",
-                    "url": "${{ vars.UNCOMMITTED_FAIL_DOCS }}",
-                    "action_id": "button-action"
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🌳 *Uncommmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
-                  }
-                }
-              ]
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
-          UNCOMMITTED_BRANCH: hotfix/production/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
-          GIT_REPO_URL: https://github.com/${{ github.repository }}
-
-      # Slack deployment failure notification - LONG.
-      - name: Slack Failure Notification - Long
+      # Slack deployment failure notification.
+      - name: Slack Failure Notification
         id: slack_failure_long
-        if: ${{ steps.deploy_prod.outcome == 'failure' && vars.DEPLOY_FAIL_MESSAGE != 'short' && vars.DEPLOY_FAIL_MESSAGE != 'off' }}
+        if: ${{ steps.deploy_prod.outcome == 'failure' }}
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -519,48 +323,17 @@ jobs:
           # For posting a rich message using Block Kit
           payload: |
             {
-              "blocks": [
+              "text":"🤯 Failed Production Deployment",
+              "attachments":[
                 {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "${{ vars.DEP_PROD_FAIL_HEAD }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "divider"
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "${{ vars.DEP_PROD_FAIL_BODY }}"
-                  }
-                },
-                {
-                  "type": "image",
-                  "image_url": "${{ vars.DEP_PROD_FAIL_IMAGE }}",
-                  "alt_text": "status"
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🌳 *Uncommmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
-                  }
-                },
-                {
-                  "type": "rich_text",
-                  "elements": [
+                  "color":"#d0241b",
+                  "blocks": [
                     {
-                      "type": "rich_text_section",
-                      "elements": [
-                        {
-                          "type": "usergroup",
-                          "usergroup_id": "S0568RB4WTT"
-                        }
-                      ]
+                      "type": "section",
+                      "text": {
+                        "type": "mrkdwn",
+                        "text": "*🤯 Failed Production Deployment* | Looks like something went wrong with the deployment. The @lead-dev-team will have to take a look."
+                      }
                     }
                   ]
                 }
@@ -569,66 +342,9 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
 
-      # Slack deployment failure notification - SHORT.
-      - name: Slack Failure Notification - Short
-        id: slack_failure_short
-        if: ${{ steps.deploy_prod.outcome == 'failure' && vars.DEPLOY_FAIL_MESSAGE != 'short' && vars.DEPLOY_FAIL_MESSAGE != 'off' }}
-        uses: slackapi/slack-github-action@v1.25.0
-        with:
-          # Slack channel id, channel name, or user id to post message.
-          # See also: https://api.slack.com/methods/chat.postMessage#channels
-          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
-          # For posting a rich message using Block Kit
-          payload: |
-            {
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "${{ vars.DEP_PROD_FAIL_HEAD }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "divider"
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "${{ vars.DEP_PROD_FAIL_BODY }}"
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "🚩 *Result*: `${{ job.status }}`\n🚀 *Triggered By*: `${{ github.event.pull_request.html_url || github.event.head_commit.url }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`\n🌳 *Uncommmitted Branch*: `<${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|${{env.UNCOMMITTED_BRANCH}}>`"
-                  }
-                },
-                {
-                  "type": "rich_text",
-                  "elements": [
-                    {
-                      "type": "rich_text_section",
-                      "elements": [
-                        {
-                          "type": "usergroup",
-                          "usergroup_id": "S0568RB4WTT"
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
-
-      # Slack deployment success notification - LONG.
-      - name: Slack Success Notification - Long
-        id: slack_success_long
+      # Slack deployment success notification.
+      - name: Slack Success Notification
+        id: slack_success
         if: ${{ steps.deploy_prod.outcome == 'success' && vars.DEPLOY_SUCC_MESSAGE != 'short' && vars.DEPLOY_SUCC_MESSAGE != 'off' }}
         uses: slackapi/slack-github-action@v1.25.0
         with:
@@ -638,84 +354,19 @@ jobs:
           # For posting a rich message using Block Kit
           payload: |
             {
-              "blocks": [
+              "text":"🚀 Production Deployment Successful",
+              "attachments":[
                 {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "${{ vars.DEP_PROD_SUCC_HEAD }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "divider"
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "${{ vars.DEP_PROD_SUCC_BODY }}"
-                  }
-                },
-                {
-                  "type": "image",
-                  "image_url": "${{ vars.DEP_PROD_SUCC_IMAGE }}",
-                  "alt_text": "status"
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "✅ *GitHub Action Result*: `${{ job.status }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`"
-                  }
-                }
-              ]
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
-      
-      # Slack deployment success notification - SHORT.
-      - name: Slack Success Notification - Short
-        id: slack_success_short
-        if: ${{ steps.deploy_prod.outcome == 'success' && vars.DEPLOY_SUCC_MESSAGE == 'short' }}
-        uses: slackapi/slack-github-action@v1.25.0
-        with:
-          # Slack channel id, channel name, or user id to post message.
-          # See also: https://api.slack.com/methods/chat.postMessage#channels
-          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
-          # For posting a rich message using Block Kit
-          payload: |
-            {
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "${{ vars.DEP_PROD_SUCC_HEAD }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "divider"
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "${{ vars.DEP_PROD_SUCC_BODY }}"
-                  }
-                },
-                {
-                  "type": "image",
-                  "image_url": "${{ vars.DEP_PROD_SUCC_IMAGE }}",
-                  "alt_text": "status"
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "✅ *GitHub Action Result*: `${{ job.status }}`\n🧑‍💻 *User*: `${{ github.triggering_actor }}`"
-                  }
+                  "color":"#007a04",
+                  "blocks": [
+                    {
+                      "type": "section",
+                      "text": {
+                        "type": "mrkdwn",
+                        "text": "*🚀 Production Deployment Successful* | We had a successful deployment to production from ${{ github.triggering_actor }}! <${{ vars.PRODUCTION_URL }}|🔗 View Production>"
+                      }
+                    }
+                  ]
                 }
               ]
             }
