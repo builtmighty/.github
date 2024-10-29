@@ -163,9 +163,9 @@ jobs:
 
       ## 6. Notifies Slack for linting failures, uncommitted changes, or linting success.
       # Write linting errors to Slack channel, long message.
-      - name: Slack Linting Errors Notification - LONG
-        id: slack_linting_failed_long
-        if: ${{ steps.super_linter.outcome  != 'success' && vars.LINT_FAIL_MESSAGE  != 'short' && vars.LINT_FAIL_MESSAGE  != 'off' }}
+      - name: Slack Linting Errors Notification
+        id: slack_linting_failed
+        if: ${{ steps.super_linter.outcome  != 'success' }}
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -174,132 +174,17 @@ jobs:
           # Write errors.
           payload: |
             {
-              "blocks": [
+              "text":"💩 Release Candidate Linting Failed",
+              "attachments":[
                 {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "${{ vars.LINT_RC_FAIL_HEAD }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "divider"
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "${{ vars.LINT_RC_FAIL_BODY }}"
-                  }
-                },
-                {
-                  "type": "image",
-                  "image_url": "${{ vars.LINT_RC_FAIL_IMAGE }}",
-                  "alt_text": "status"
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Don't know what to do when linting fails?"
-                  },
-                  "accessory": {
-                    "type": "button",
-                    "text": {
-                      "type": "plain_text",
-                      "text": "📓 Read Documentation",
-                      "emoji": true
-                    },
-                    "value": "click_me_123",
-                    "url": "${{ vars.LINT_FAIL_DOCS }}",
-                    "action_id": "button-action"
-                  }
-                },
-                {
-                  "type": "actions",
-                  "elements": [
+                  "color":"#d0241b",
+                  "blocks": [
                     {
-                      "type": "button",
+                      "type": "section",
                       "text": {
-                        "type": "plain_text",
-                        "text": "View Pull Request",
-                        "emoji": true
-                      },
-                      "value": "click_me_123",
-                      "url": "${{ github.event.pull_request.html_url || github.event.repository.html_url }}",
-                      "action_id": "actionId-0"
-                    }
-                  ]
-                }
-              ]
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
-          GIT_REPO_URL: https://github.com/${{ github.repository }}
-
-      # Write linting errors to Slack channel, short message.
-      - name: Slack Linting Errors Notification - SHORT
-        id: slack_linting_failed_short
-        if: ${{ steps.super_linter.outcome  != 'success' && vars.LINT_FAIL_MESSAGE  == 'short' }}
-        uses: slackapi/slack-github-action@v1.25.0
-        with:
-          # Slack channel id, channel name, or user id to post message.
-          # See also: https://api.slack.com/methods/chat.postMessage#channels
-          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
-          # Write errors.
-          payload: |
-            {
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "${{ vars.LINT_RC_FAIL_HEAD }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "divider"
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "${{ vars.LINT_RC_FAIL_BODY }}"
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Don't know what to do when linting fails?"
-                  },
-                  "accessory": {
-                    "type": "button",
-                    "text": {
-                      "type": "plain_text",
-                      "text": "📓 Read Documentation",
-                      "emoji": true
-                    },
-                    "value": "click_me_123",
-                    "url": "${{ vars.LINT_FAIL_DOCS }}",
-                    "action_id": "button-action"
-                  }
-                },
-                {
-                  "type": "actions",
-                  "elements": [
-                    {
-                      "type": "button",
-                      "text": {
-                        "type": "plain_text",
-                        "text": "View Pull Request",
-                        "emoji": true
-                      },
-                      "value": "click_me_123",
-                      "url": "${{ github.event.pull_request.html_url || github.event.repository.html_url }}",
-                      "action_id": "actionId-0"
+                        "type": "mrkdwn",
+                        "text": "*💩 Release Candidate Linting Failed* | Don't know what to do when linting fails? <${{ vars.LINT_FAIL_DOCS }}|📓 Read Documentation>"
+                      }
                     }
                   ]
                 }
@@ -321,42 +206,19 @@ jobs:
           # For posting a rich message using Block Kit
           payload: |
             {
-              "blocks": [
+              "text":"📛 Unable to Connect to Staging",
+              "attachments":[
                 {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "📛 Unable to Connect to Staging",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "divider"
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Check that the staging SSH credentials are properly set. If the issue persists, contact the lead dev team."
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Want to know how to setup SSH credentials?"
-                  },
-                  "accessory": {
-                    "type": "button",
-                    "text": {
-                      "type": "plain_text",
-                      "text": "📓 Read Documentation",
-                      "emoji": true
-                    },
-                    "value": "click_me_123",
-                    "url": "${{ vars.SSH_DOCS }}",
-                    "action_id": "button-action"
-                  }
+                  "color":"#d0241b",
+                  "blocks": [
+                    {
+                      "type": "section",
+                      "text": {
+                        "type": "mrkdwn",
+                        "text": "*📛 Unable to Connect to Staging* | The @lead-dev-team will take a look."
+                      }
+                    }
+                  ]
                 }
               ]
             }
@@ -377,42 +239,19 @@ jobs:
           # For posting a rich message using Block Kit
           payload: |
             {
-              "blocks": [
+              "text":"😶 Uncommitted Code on Staging",
+              "attachments":[
                 {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "🚨 Uncommitted Changes on Staging",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "divider"
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "We took a look and there are currently uncommitted changes on staging. *Someone should capture the changes before deploying.*"
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Want to know how to grab uncommitted changes properly?"
-                  },
-                  "accessory": {
-                    "type": "button",
-                    "text": {
-                      "type": "plain_text",
-                      "text": "📓 Read Documentation",
-                      "emoji": true
-                    },
-                    "value": "click_me_123",
-                    "url": "${{ vars.UNCOMMITTED_DOCS }}",
-                    "action_id": "button-action"
-                  }
+                  "color":"#d0241b",
+                  "blocks": [
+                    {
+                      "type": "section",
+                      "text": {
+                        "type": "mrkdwn",
+                        "text": "*😶 Uncommitted Code on Staging* | Someone should capture the changes before merging into the release candidate. <${{ vars.UNCOMMITTED_DOCS }}|📓 Learn How>"
+                      }
+                    }
+                  ]
                 }
               ]
             }
@@ -422,8 +261,8 @@ jobs:
           GIT_REPO_URL: https://github.com/${{ github.repository }}
       
       # Write success message to Slack channel, but in long form.
-      - name: Slack Success Notification - LONG
-        id: slack_success_long
+      - name: Slack Success Notification
+        id: slack_success
         if: ${{ steps.super_linter.outcome == 'success' && !github.event.pull_request.draft && vars.LINT_SUCC_MESSAGE  != 'short' && vars.LINT_SUCC_MESSAGE  != 'off' }}
         uses: slackapi/slack-github-action@v1.25.0
         with:
@@ -433,96 +272,17 @@ jobs:
           # Write errors.
           payload: |
             {
-              "blocks": [
+              "text":"✔ Release Candidate Code Linting Success",
+              "attachments":[
                 {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "${{ vars.LINT_RC_SUCC_HEAD }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "divider"
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "${{ vars.LINT_RC_SUCC_BODY }}"
-                  }
-                },
-                {
-                  "type": "image",
-                  "image_url": "${{ vars.LINT_RC_SUCC_IMAGE }}",
-                  "alt_text": "status"
-                },
-                {
-                  "type": "actions",
-                  "elements": [
+                  "color":"#007a04",
+                  "blocks": [
                     {
-                      "type": "button",
+                      "type": "section",
                       "text": {
-                        "type": "plain_text",
-                        "text": "🔀 View Pull Request",
-                        "emoji": true
-                      },
-                      "value": "click_me_123",
-                      "url": "${{ github.event.pull_request.html_url || github.event.repository.html_url }}",
-                      "action_id": "actionId-0"
-                    }
-                  ]
-                }
-              ]
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_API_KEY }}
-          GIT_REPO_URL: https://github.com/${{ github.repository }}
-
-      # Write success message to Slack channel, but in long form.
-      - name: Slack Success Notification - SHORT
-        id: slack_success_short
-        if: ${{ steps.super_linter.outcome == 'success' && !github.event.pull_request.draft && vars.LINT_SUCC_MESSAGE  == 'short' }}
-        uses: slackapi/slack-github-action@v1.25.0
-        with:
-          # Slack channel id, channel name, or user id to post message.
-          # See also: https://api.slack.com/methods/chat.postMessage#channels
-          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
-          # Write errors.
-          payload: |
-            {
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "${{ vars.LINT_RC_SUCC_HEAD }}",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "divider"
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "${{ vars.LINT_RC_SUCC_BODY }}"
-                  }
-                },
-                {
-                  "type": "actions",
-                  "elements": [
-                    {
-                      "type": "button",
-                      "text": {
-                        "type": "plain_text",
-                        "text": "🔀 View Pull Request",
-                        "emoji": true
-                      },
-                      "value": "click_me_123",
-                      "url": "${{ github.event.pull_request.html_url || github.event.repository.html_url }}",
-                      "action_id": "actionId-0"
+                        "type": "mrkdwn",
+                        "text": "*✔ Release Candidate Code Linting Success* | Let's get it deployed to staging and test it! <${{ github.event.pull_request.html_url || github.event.repository.html_url }}|🔀 View Pull Request>"
+                      }
                     }
                   ]
                 }
