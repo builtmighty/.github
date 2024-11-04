@@ -173,18 +173,24 @@ jobs:
           payload: |
             {
               "text":"🚨 Production Linting Failed",
-              "attachments":[
+              "blocks": [
                 {
-                  "color":"#d0241b",
-                  "blocks": [
-                    {
-                      "type": "section",
-                      "text": {
-                        "type": "mrkdwn",
-                        "text": "*🚨 Production Linting Failed* | Don't know what to do when linting fails? <${{ vars.LINT_FAIL_DOCS }}|📓 Read Documentation>"
-                      }
-                    }
-                  ]
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*🚨 Production Linting Failed* | Don't know what to do when linting fails?"
+                  },
+                  "accessory": {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "📓 Read Documentation",
+                      "emoji": true
+                    },
+                    "value": "click_me_123",
+                    "url": "${{ vars.LINT_FAIL_DOCS }}",
+                    "action_id": "button-action"
+                  }
                 }
               ]
             }
@@ -205,18 +211,13 @@ jobs:
           payload: |
             {
               "text":"📛 Workflows Unable to Connect to Production",
-              "attachments":[
+              "blocks": [
                 {
-                  "color":"#d0241b",
-                  "blocks": [
-                    {
-                      "type": "section",
-                      "text": {
-                        "type": "mrkdwn",
-                        "text": "*📛 Workflow Unable to Connect to Production* | The @lead-dev-team will take a look."
-                      }
-                    }
-                  ]
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*📛 Workflow Unable to Connect to Production* | The @lead-dev-team will take a look."
+                  }
                 }
               ]
             }
@@ -238,18 +239,24 @@ jobs:
           payload: |
             {
               "text":"😠 Uncommitted Code on Production",
-              "attachments":[
+              "blocks": [
                 {
-                  "color":"#d0241b",
-                  "blocks": [
-                    {
-                      "type": "section",
-                      "text": {
-                        "type": "mrkdwn",
-                        "text": "*😠 Uncommitted Code on Production* | Someone should capture the changes before deploying. <${{ vars.UNCOMMITTED_DOCS }}|📓 Learn How>"
-                      }
-                    }
-                  ]
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*😠 Uncommitted Code on Production* | Someone should capture the changes before deploying."
+                  },
+                  "accessory": {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "📓 Learn How",
+                      "emoji": true
+                    },
+                    "value": "click_me_123",
+                    "url": "${{ vars.UNCOMMITTED_DOCS }}",
+                    "action_id": "button-action"
+                  }
                 }
               ]
             }
@@ -271,18 +278,24 @@ jobs:
           payload: |
             {
               "text":"✅ Production Code Linting Success",
-              "attachments":[
+              "blocks": [
                 {
-                  "color":"#007a04",
-                  "blocks": [
-                    {
-                      "type": "section",
-                      "text": {
-                        "type": "mrkdwn",
-                        "text": "*✅ Production Code Linting Success* | Awesome! The code is looking good. <${{ github.event.pull_request.html_url || github.event.repository.html_url }}|🔀 View Pull Request>"
-                      }
-                    }
-                  ]
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*✅ Production Code Linting Success* | Awesome! Time to merge and deploy."
+                  },
+                  "accessory": {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "🔀 View Pull Request",
+                      "emoji": true
+                    },
+                    "value": "click_me_123",
+                    "url": "${{ github.event.pull_request.html_url || github.event.repository.html_url }}",
+                    "action_id": "button-action"
+                  }
                 }
               ]
             }
