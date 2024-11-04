@@ -64,6 +64,7 @@ jobs:
       ## 2. Sets up deployment keys.
       # Setup Deployment SSH Key
       - name: Setup Deployment SSH Key
+        if: ${{ vars.WPENGINE_DEPLOY != 'true' }}
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
@@ -81,6 +82,7 @@ jobs:
 
       ## 3. Checks for uncommitted code.
       - name: Check for Uncommitted Code on Production
+        if: ${{ vars.WPENGINE_DEPLOY != 'true' }}
         continue-on-error: true
         run: |
           ssh -i~/.ssh/id_rsa -o StrictHostKeyChecking=no -p${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "cd ${{ secrets.PROD_REMOTE_WEB_ROOT }} && git status -s" > ~/.ssh/git-status.txt
@@ -90,36 +92,27 @@ jobs:
         id: check_uncommitted
 
       ## 4. Captures uncommitted code, in the form of a patch.
-      # Tries to capture via git diff, if that fails, tries git stash show -p.
       - name: Capture Uncommitted Code
         continue-on-error: true
-        if: ${{ steps.check_uncommitted.outcome == 'failure' }}
+        if: ${{ steps.check_uncommitted.outcome == 'failure' && vars.WPENGINE_DEPLOY != 'true' }}
         run: |
           # Connect and create the patch.
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
             cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
-            git diff --binary > uncommitted_changes.patch
+            # Stash and capture uncommitted code in a patch.
+            git stash
+            git stash show -p > uncommitted_changes.patch
+            git stash apply
+            # Get the current commit hash
+            git rev-parse HEAD > commit_hash.txt
           "
-          # Download the patch file.
+          # Download patch and commit hash.
           scp -i ~/.ssh/id_rsa -P ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}:${{ secrets.PROD_REMOTE_WEB_ROOT }}/uncommitted_changes.patch .
-          # Check if the patch is empty.
-          if [[ ! -s uncommitted_changes.patch ]]; then
-            # Delete the empty patch file.
-            rm -rf uncommitted_changes.patch
-            # SSH back in and try git stash show -p for the patch.
-            ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
-              cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
-              git stash
-              git stash show -p > uncommitted_changes.patch
-              git stash apply
-            "
-            # Download the patch file.
-            scp -i ~/.ssh/id_rsa -P ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}:${{ secrets.PROD_REMOTE_WEB_ROOT }}/uncommitted_changes.patch .
-          fi
-          # Delete the patch file from remote.
+          scp -i ~/.ssh/id_rsa -P ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }}:${{ secrets.PROD_REMOTE_WEB_ROOT }}/commit_hash.txt .
+          # Delete the patch file and commit hash from remote.
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
             cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
-            rm -rf uncommitted_changes.patch
+            rm -rf uncommitted_changes.patch && rm -rf commit_hash.txt
           "
           if [[ ! -s uncommitted_changes.patch ]]; then
             # SSH back in and get Git version.
@@ -133,26 +126,31 @@ jobs:
       ## 5. Applies the patch to a hotfix branch.
       - name: Apply Uncommitted Patch and Commit
         continue-on-error: true
-        if: ${{ steps.check_uncommitted.outcome == 'failure' && steps.capture_uncommitted.outcome == 'success' }}
+        if: ${{ steps.check_uncommitted.outcome == 'failure' && steps.capture_uncommitted.outcome == 'success' && vars.WPENGINE_DEPLOY != 'true' }}
         env:
           UNCOMMITTED_BRANCH: hotfix/production/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
           GIT_REPO_URL: https://github.com/${{ github.repository }}
         run: |
-          git apply --check uncommitted_changes.patch
-          if [ $? -ne 0 ]; then
-              echo "Patch cannot be applied cleanly"
-              exit 1
-          fi
+          # Capture commit hash.
+          COMMIT_HASH=$(cat commit_hash.txt)
+          # Checkout current live commit.
+          git pull origin $COMMIT_HASH
+          git checkout $COMMIT_HASH
+          # Apply the patch.
           git apply uncommitted_changes.patch
+          # Setup Git signing.
           git config core.filemode false && sudo chown -R $(whoami) . && chown -R $(whoami) .
           git config --global gpg.format ssh
           git config --global user.signingkey ~/.ssh/bot
           git config --global commit.gpgsign true
           git config user.name "builtmightybot"
           git config user.email "bot@builtmighty.com"
+          # Clean up.
+          rm -rf uncommitted_changes.patch
+          # Create uncommitted branch.
           git checkout -b ${{ env.UNCOMMITTED_BRANCH }}
           git push origin ${{ env.UNCOMMITTED_BRANCH }}
-          rm -rf uncommitted_changes.patch
+          # Commit uncommitted code.
           git add .
           git commit -S -m "🚨 Captured ALL Uncommitted Code on Production"
           git push origin ${{ env.UNCOMMITTED_BRANCH }}
@@ -160,7 +158,7 @@ jobs:
       ## 6. Checks if the hotfix branch was created.
       - name: Check Hotfix Branch Exists
         continue-on-error: true
-        if: ${{ steps.check_uncommitted.outcome == 'failure' && steps.capture_uncommitted.outcome == 'success' }}
+        if: ${{ steps.check_uncommitted.outcome == 'failure' && steps.capture_uncommitted.outcome == 'success' && vars.WPENGINE_DEPLOY != 'true' }}
         run: |
           git fetch --all
           git branch -r | grep hotfix/production/uncommitted-changes_${{github.run_id}}.${{github.run_attempt}}
@@ -169,7 +167,7 @@ jobs:
       ## 7. Updates production to hotfix branch.
       - name: Pull Hotfix Branch to Production
         continue-on-error: true
-        if: ${{ steps.check_uncommitted.outcome == 'failure' && steps.capture_uncommitted.outcome == 'success' && steps.check_hotfix.outcome == 'success' }}
+        if: ${{ steps.check_uncommitted.outcome == 'failure' && steps.capture_uncommitted.outcome == 'success' && steps.check_hotfix.outcome == 'success' && vars.WPENGINE_DEPLOY != 'true' }}
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           DEPLOY_PAT: ${{ secrets.DEPLOY_WORKFLOW_PAT }}
@@ -187,7 +185,7 @@ jobs:
       ## 8. Deploys code, if no uncommitted code was found.
       - name: Deploy to Production
         continue-on-error: true
-        if: ${{ steps.check_uncommitted.outcome == 'success' }}
+        if: ${{ steps.check_uncommitted.outcome == 'success' && vars.WPENGINE_DEPLOY != 'true' }}
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           DEPLOY_PAT: ${{ secrets.DEPLOY_WORKFLOW_PAT }}
@@ -202,14 +200,25 @@ jobs:
           "
         id: deploy_prod
 
+      # WP Engine Deploy.
+      - name: Deploy to WP Engine Production
+        continue-on-error: true
+        uses: wpengine/github-action-wpe-site-deploy@v3
+        if: ${{ vars.WPENGINE_DEPLOY == 'true' }}
+        with:
+          WPE_SSHG_KEY_PRIVATE: ${{ secrets.WPE_SSH_KEY }} 
+          WPE_ENV: ${{ vars.WPE_PROD }}
+        id: deploy_wpe
+
       # Platform deploy.
       - name: Platform Scripts
-        if: ${{ steps.deploy_prod.outcome == 'success' && ( vars.PLATFORM == 'laravel' || vars.PLATFORM == 'wordpress' ) }}
+        continue-on-error: true
+        if: ${{ steps.deploy_prod.outcome == 'success' && ( vars.PLATFORM == 'laravel' || vars.PLATFORM == 'wordpress' ) && vars.WPENGINE_DEPLOY != 'true' }}
         run: |
           if [ -z "${{ vars.BUILDSCRIPTS }}" ]; then
             echo "Nothing to do here."
           else
-            if [ "${{ vars.PLATFORM" = "laravel" ]; then
+            if [ ${{ vars.PLATFORM }} = "laravel" ]; then
               ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -p ${{ secrets.PROD_SSH_PORT }} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} "
                 cd ${{ secrets.PROD_REMOTE_WEB_ROOT }}
                 ${{ vars.BUILDSCRIPTS }}
@@ -226,7 +235,7 @@ jobs:
 
       # Deploy Success Status.
       - name: Successful GitHub Deployment
-        if: ${{ steps.deploy_prod.outcome == 'success' }}
+        if: ${{ steps.deploy_prod.outcome == 'success' || steps.deploy_wpe.outcome == 'success' }}
         uses: chrnorm/deployment-status@v2
         with:
           token: '${{ github.token }}'
@@ -236,7 +245,7 @@ jobs:
 
       # Deploy Failure Status.
       - name: Failed GitHub Deployment
-        if: ${{ steps.check_uncommitted.outcome == 'failure' || steps.deploy_prod.outcome == 'failure' }}
+        if: ${{ steps.check_uncommitted.outcome == 'failure' || steps.deploy_prod.outcome == 'failure' || steps.deploy_wpe.outcome == 'failure' }}
         uses: chrnorm/deployment-status@v2
         with:
           token: '${{ github.token }}'
@@ -258,18 +267,24 @@ jobs:
           payload: |
             {
               "text":"🚩 Uncommitted Code on Production",
-              "attachments":[
+              "blocks": [
                 {
-                  "color":"#d0241b",
-                  "blocks": [
-                    {
-                      "type": "section",
-                      "text": {
-                        "type": "mrkdwn",
-                        "text": "*🚩 Uncommitted Code on Production* | Check out the uncommitted code in this new branch and check if it needs to be merged into the default branch. <${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}|🔴 Uncommitted Code Branch>"
-                      }
-                    }
-                  ]
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*🚩 Uncommitted Code on Production* | Check out the uncommitted code in this new branch and check if it needs to be merged into the default branch."
+                  },
+                  "accessory": {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "🌳 Uncommitted Code Branch",
+                      "emoji": true
+                    },
+                    "value": "click_me_123",
+                    "url": "${{ env.GIT_REPO_URL }}/tree/${{env.UNCOMMITTED_BRANCH}}",
+                    "action_id": "button-action"
+                  }
                 }
               ]
             }
@@ -291,18 +306,24 @@ jobs:
           payload: |
             {
               "text":"🚩 Uncommitted Code on Production",
-              "attachments":[
+              "blocks": [
                 {
-                  "color":"#d0241b",
-                  "blocks": [
-                    {
-                      "type": "section",
-                      "text": {
-                        "type": "mrkdwn",
-                        "text": "*🚩 Uncommitted Code on Production* | We were unable to grab it though. Find out what to do. <${{ vars.UNCOMMITTED_FAIL_DOCS }}|📓 Read Documentation>"
-                      }
-                    }
-                  ]
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*🚩 Uncommitted Code on Production* | We were unable to grab it though. Find out what to do."
+                  },
+                  "accessory": {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "📓 Read Documentation",
+                      "emoji": true
+                    },
+                    "value": "click_me_123",
+                    "url": "${{ vars.UNCOMMITTED_FAIL_DOCS }}",
+                    "action_id": "button-action"
+                  }
                 }
               ]
             }
@@ -314,7 +335,7 @@ jobs:
       # Slack deployment failure notification.
       - name: Slack Failure Notification
         id: slack_failure_long
-        if: ${{ steps.deploy_prod.outcome == 'failure' }}
+        if: ${{ steps.deploy_prod.outcome == 'failure' || steps.deploy_wpe.outcome == 'failure' }}
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -324,18 +345,13 @@ jobs:
           payload: |
             {
               "text":"🤯 Failed Production Deployment",
-              "attachments":[
+              "blocks": [
                 {
-                  "color":"#d0241b",
-                  "blocks": [
-                    {
-                      "type": "section",
-                      "text": {
-                        "type": "mrkdwn",
-                        "text": "*🤯 Failed Production Deployment* | Looks like something went wrong with the deployment. The @lead-dev-team will have to take a look."
-                      }
-                    }
-                  ]
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*🤯 Failed Production Deployment* | Looks like something went wrong with the deployment. The @lead-dev-team will have to take a look."
+                  }
                 }
               ]
             }
@@ -345,7 +361,7 @@ jobs:
       # Slack deployment success notification.
       - name: Slack Success Notification
         id: slack_success
-        if: ${{ steps.deploy_prod.outcome == 'success' }}
+        if: ${{ steps.deploy_prod.outcome == 'success' || steps.deploy_wpe.outcome == 'success' }}
         uses: slackapi/slack-github-action@v1.25.0
         with:
           # Slack channel id, channel name, or user id to post message.
@@ -355,18 +371,24 @@ jobs:
           payload: |
             {
               "text":"🚀 Production Deployment Successful",
-              "attachments":[
+              "blocks": [
                 {
-                  "color":"#007a04",
-                  "blocks": [
-                    {
-                      "type": "section",
-                      "text": {
-                        "type": "mrkdwn",
-                        "text": "*🚀 Production Deployment Successful* | We had a successful deployment to production from ${{ github.triggering_actor }}! <${{ vars.PRODUCTION_URL }}|🔗 View Production>"
-                      }
-                    }
-                  ]
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*🚀 Production Deployment Successful* | We had a successful deployment to production from ${{ github.triggering_actor }}!"
+                  },
+                  "accessory": {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "🔗 View Production",
+                      "emoji": true
+                    },
+                    "value": "click_me_123",
+                    "url": "${{ vars.PRODUCTION_URL }}",
+                    "action_id": "button-action"
+                  }
                 }
               ]
             }
@@ -376,7 +398,7 @@ jobs:
       ## 10. Run final job status check.
       # Check if the job failed or succeeded.
       - name: Final Job Status Check
-        if: ${{ steps.check_uncommitted.outcome == 'failure' || steps.deploy_prod.outcome == 'failure' }}
+        if: ${{ steps.check_uncommitted.outcome == 'failure' || steps.deploy_prod.outcome == 'failure' || steps.deploy_wpe.outcome == 'failure' }}
         run: |
           echo "Job failed. Please check the logs for more information."
           exit 1
