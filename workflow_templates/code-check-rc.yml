@@ -175,18 +175,24 @@ jobs:
           payload: |
             {
               "text":"💩 Release Candidate Linting Failed",
-              "attachments":[
+              "blocks": [
                 {
-                  "color":"#d0241b",
-                  "blocks": [
-                    {
-                      "type": "section",
-                      "text": {
-                        "type": "mrkdwn",
-                        "text": "*💩 Release Candidate Linting Failed* | Don't know what to do when linting fails? <${{ vars.LINT_FAIL_DOCS }}|📓 Read Documentation>"
-                      }
-                    }
-                  ]
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*💩 Release Candidate Linting Failed* | Don't know what to do when linting fails?"
+                  },
+                  "accessory": {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "📓 Read Documentation",
+                      "emoji": true
+                    },
+                    "value": "click_me_123",
+                    "url": "${{ vars.LINT_FAIL_DOCS }}",
+                    "action_id": "button-action"
+                  }
                 }
               ]
             }
@@ -207,18 +213,13 @@ jobs:
           payload: |
             {
               "text":"📛 Unable to Connect to Staging",
-              "attachments":[
+              "blocks": [
                 {
-                  "color":"#d0241b",
-                  "blocks": [
-                    {
-                      "type": "section",
-                      "text": {
-                        "type": "mrkdwn",
-                        "text": "*📛 Unable to Connect to Staging* | The @lead-dev-team will take a look."
-                      }
-                    }
-                  ]
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*📛 Unable to Connect to Staging* | The @lead-dev-team will take a look."
+                  }
                 }
               ]
             }
@@ -240,18 +241,24 @@ jobs:
           payload: |
             {
               "text":"😶 Uncommitted Code on Staging",
-              "attachments":[
+              "blocks": [
                 {
-                  "color":"#d0241b",
-                  "blocks": [
-                    {
-                      "type": "section",
-                      "text": {
-                        "type": "mrkdwn",
-                        "text": "*😶 Uncommitted Code on Staging* | Someone should capture the changes before merging into the release candidate. <${{ vars.UNCOMMITTED_DOCS }}|📓 Learn How>"
-                      }
-                    }
-                  ]
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*😶 Uncommitted Code on Staging* | Someone should capture the changes before merging into the release candidate."
+                  },
+                  "accessory": {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "📓 Learn How",
+                      "emoji": true
+                    },
+                    "value": "click_me_123",
+                    "url": "${{ vars.UNCOMMITTED_DOCS }}",
+                    "action_id": "button-action"
+                  }
                 }
               ]
             }
@@ -273,18 +280,24 @@ jobs:
           payload: |
             {
               "text":"✔ Release Candidate Code Linting Success",
-              "attachments":[
+              "blocks": [
                 {
-                  "color":"#007a04",
-                  "blocks": [
-                    {
-                      "type": "section",
-                      "text": {
-                        "type": "mrkdwn",
-                        "text": "*✔ Release Candidate Code Linting Success* | Let's get it deployed to staging and test it! <${{ github.event.pull_request.html_url || github.event.repository.html_url }}|🔀 View Pull Request>"
-                      }
-                    }
-                  ]
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*✔ Release Candidate Code Linting Success* | Let's get it deployed to staging and test it!"
+                  },
+                  "accessory": {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "🔀 View Pull Request",
+                      "emoji": true
+                    },
+                    "value": "click_me_123",
+                    "url": "${{ github.event.pull_request.html_url || github.event.repository.html_url }}",
+                    "action_id": "button-action"
+                  }
                 }
               ]
             }
