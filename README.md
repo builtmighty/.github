@@ -1,7 +1,7 @@
 
 <p align="center"><a href="https://builtmighty.com" target="_blank"><img src="https://github.com/builtmighty/.github/assets/7398228/b866e098-b7e3-443c-9a97-68aa17804236" width="700"></a></p>
 
- <h4 align="center">- Version 1.7.0 -</h4>
+ <h4 align="center">- Version 1.8.0 -</h4>
 
 
 ## Built Mighty CI/CD
@@ -39,20 +39,29 @@ Add the following Action secrets/variables to the repo, by going to the reposito
 
 > ❗️ = Required
 
-- ❗️ `PROD_REMOTE_WEB_ROOT` - The web root for the production WordPress install. This is the location where wp-config.php should be set. Input the path without a trailing slash. On Kinsta, you can get this from the “Info” tab. ( ***IE** /www/sitename/public* )
-- ❗️ `PROD_SSH_HOST` - The SSH host IP address for the production site. ( ***IE** 123.45.678.9* )
-- ❗️ `PROD_SSH_PORT` - The SSH port for connecting to the production server. ( ***IE** 123456* )
-- ❗️ `PROD_SSH_USER` - The user used to connect and log in to the production server via SSH. ( ***IE** site_user* )
-- ❗️ `RC_REMOTE_WEB_ROOT` - The web root for the staging WordPress install. This is the location where wp-config.php should be set. Input the path without a trailing slash. On Kinsta, you can get this from the “Info” tab. ( ***IE** /www/sitename/public* )
-- ❗️ `RC_SSH_HOST` - The SSH host IP address for the staging site. ( ***IE** 123.45.678.9* )
-- ❗️ `RC_SSH_PORT` - The SSH port for connecting to the staging server. ( ***IE** 123456* )
-- ❗️ `RC_SSH_USER` - The user used to connect and log in to the staging server via SSH. ( ***IE** site_user* )
-- ❗️ `SLACK_CHANNEL_ID` - This is the specific Slack channel where notifications should be posted. You can find this ID, on Slack, by going to the channel. Click on the channel name in the top bar.
+- ❗️ `PROD_REMOTE_WEB_ROOT` (Secret) - The web root for the production WordPress install. This is the location where wp-config.php should be set. Input the path without a trailing slash. On Kinsta, you can get this from the “Info” tab. ( ***IE** /www/sitename/public* )
+- ❗️ `PROD_SSH_HOST` (Secret) - The SSH host IP address for the production site. ( ***IE** 123.45.678.9* )
+- ❗️ `PROD_SSH_PORT` (Secret) - The SSH port for connecting to the production server. ( ***IE** 123456* )
+- ❗️ `PROD_SSH_USER` (Secret) - The user used to connect and log in to the production server via SSH. ( ***IE** site_user* )
+- ❗️ `RC_REMOTE_WEB_ROOT` (Secret) - The web root for the staging WordPress install. This is the location where wp-config.php should be set. Input the path without a trailing slash. On Kinsta, you can get this from the “Info” tab. ( ***IE** /www/sitename/public* )
+- ❗️ `RC_SSH_HOST` (Secret) - The SSH host IP address for the staging site. ( ***IE** 123.45.678.9* )
+- ❗️ `RC_SSH_PORT` (Secret) - The SSH port for connecting to the staging server. ( ***IE** 123456* )
+- ❗️ `RC_SSH_USER` (Secret) - The user used to connect and log in to the staging server via SSH. ( ***IE** site_user* )
+- ❗️ `SLACK_CHANNEL_ID` (Secret) - This is the specific Slack channel where notifications should be posted. You can find this ID, on Slack, by going to the channel. Click on the channel name in the top bar.
+- ❗️ `PLATFORM` (Variable) - The platform of the server you're deploying to. Options are wordpress or laravel.
+- ❗️ `PRODUCTION_URL` (Variable) - The production URL where deployments will deploy.
+- ❗️ `STAGING_URL` (Variable) - The staging URL where deployments will deploy.
+---
+### WP Engine Set Up
+- ❗️ `WPENGINE_DEPLOY` (Variable) - Set variable to true to turn on.
+- ❗️ `WPE_PROD` (Variable) - The WP Engine production environment name.
+- ❗️ `WPE_STAGING` (Variable) - The WP Engine staging environment name.
 ---
 - `SSH_PRIVATE_KEY` - The private key for the remote server. This is already set on the organizational level.
-- `SLACK_BOT_API_KEY` - The Slack Bot API key is an API key used for interacting with all of Built Mighty’s Slack channels. It allows us to post success and failure notifications to Slack channels related to each project. This is already set on the organizational level.
+- `SLACK_BOT_API_KEY` - The Slack Bot API key is an API key used to interact with all of Built Mighty’s Slack channels. It allows us to post success and failure notifications to Slack channels related to each project. This is already set on the organizational level.
 - `SLACK_TEAM_ID` - This is the ID of our Built Mighty team, which encompasses all of our Slack channels. This is already set on the organizational level.
 - `BOT_SIGNING_KEY` - The bot signing key is a GitHub commit signing key, which allows our automated bot to grab uncommitted code on production or staging, commit it to a branch, and that code is verified with a proper signature. This is already set on the organizational level.
+- `WPE_SSH_KEY` - The WP Engine SSH deployment key, which is already set at the organization level. You can override it within the repository, if need be.
 ---
 
 ## Additional Resources
