@@ -1,7 +1,7 @@
 
 <p align="center"><a href="https://builtmighty.com" target="_blank"><img src="https://github.com/builtmighty/.github/assets/7398228/b866e098-b7e3-443c-9a97-68aa17804236" width="700"></a></p>
 
- <h4 align="center">- Version 1.8.0 -</h4>
+ <h4 align="center">- Version 1.9.0 -</h4>
 
 
 ## Built Mighty CI/CD
