@@ -244,6 +244,12 @@ jobs:
           deployment-id: ${{ steps.github_deployment.outputs.deployment_id }}
           state: 'success'
 
+      # Delete branch that triggered workflow.
+      - name: Delete Branch
+        if: ${{ steps.check_uncommitted.outcome == 'success' && steps.deploy_stage.outcome == 'success' }}
+        run: |
+          git push origin --delete ${{ github.head_ref }}
+
       # Deploy Failure Status.
       - name: Failed GitHub Deployment
         if: ${{ steps.check_uncommitted.outcome == 'failure' || steps.deploy_stage.outcome == 'failure' || steps.deploy_wpe.outcome == 'failure' }}
