@@ -38,8 +38,8 @@ After running the command, you should see the `.github/workflows` folder added t
 
 Add the following Action secrets/variables to the repo, by going to the repository > Settings > Secrets and variables >  Actions.
 
-❗️ = **Required**
-
+❗= **Required**
+---
 #### Secrets
 
 ```
@@ -107,11 +107,27 @@ WPE_STAGING
 ```
 > (Variable) The WP Engine staging environment name.
 ---
-- `SSH_PRIVATE_KEY` - The private key for the remote server. This is already set on the organizational level.
-- `SLACK_BOT_API_KEY` - The Slack Bot API key is an API key used to interact with all of Built Mighty’s Slack channels. It allows us to post success and failure notifications to Slack channels related to each project. This is already set on the organizational level.
-- `SLACK_TEAM_ID` - This is the ID of our Built Mighty team, which encompasses all of our Slack channels. This is already set on the organizational level.
-- `BOT_SIGNING_KEY` - The bot signing key is a GitHub commit signing key, which allows our automated bot to grab uncommitted code on production or staging, commit it to a branch, and that code is verified with a proper signature. This is already set on the organizational level.
-- `WPE_SSH_KEY` - The WP Engine SSH deployment key, which is already set at the organization level. You can override it within the repository, if need be.
+#### Organization Secrets
+```
+SSH_PRIVATE_KEY
+```
+> The private key for the remote server.
+```
+SLACK_BOT_API_KEY
+```
+> The Slack Bot API key is an API key used to interact with all of Built Mighty’s Slack channels. It allows us to post success and failure notifications to Slack channels related to each project. This is already set on the organizational level.
+```
+SLACK_TEAM_ID
+```
+> This is the ID of our Built Mighty team, which encompasses all of our Slack channels. This is already set on the organizational level.
+```
+BOT_SIGNING_KEY
+```
+> The bot signing key is a GitHub commit signing key, which allows our automated bot to grab uncommitted code on production or staging, commit it to a branch, and that code is verified with a proper signature. This is already set on the organizational level.
+```
+WPE_SSH_KEY
+```
+> The WP Engine SSH deployment key, which is already set at the organization level. You can override it within the repository if need be.
 ---
 
 ## Triggers
