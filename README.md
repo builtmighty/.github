@@ -49,26 +49,63 @@ PROD_REMOTE_WEB_ROOT
 ```
 PROD_SSH_HOST
 ```
-The SSH host IP address for the production site. ( ***IE** 123.45.678.9* )
-
-
-- ❗️ `PROD_REMOTE_WEB_ROOT` (Secret) - The web root for the production WordPress install. This is the location where wp-config.php should be set. Input the path without a trailing slash. On Kinsta, you can get this from the “Info” tab. ( ***IE** /www/sitename/public* )
-- ❗️ `PROD_SSH_HOST` (Secret) - The SSH host IP address for the production site. ( ***IE** 123.45.678.9* )
-- ❗️ `PROD_SSH_PORT` (Secret) - The SSH port for connecting to the production server. ( ***IE** 123456* )
-- ❗️ `PROD_SSH_USER` (Secret) - The user used to connect and log in to the production server via SSH. ( ***IE** site_user* )
-- ❗️ `RC_REMOTE_WEB_ROOT` (Secret) - The web root for the staging WordPress install. This is the location where wp-config.php should be set. Input the path without a trailing slash. On Kinsta, you can get this from the “Info” tab. ( ***IE** /www/sitename/public* )
-- ❗️ `RC_SSH_HOST` (Secret) - The SSH host IP address for the staging site. ( ***IE** 123.45.678.9* )
-- ❗️ `RC_SSH_PORT` (Secret) - The SSH port for connecting to the staging server. ( ***IE** 123456* )
-- ❗️ `RC_SSH_USER` (Secret) - The user used to connect and log in to the staging server via SSH. ( ***IE** site_user* )
-- ❗️ `SLACK_CHANNEL_ID` (Secret) - This is the specific Slack channel where notifications should be posted. You can find this ID, on Slack, by going to the channel. Click on the channel name in the top bar.
-- ❗️ `PLATFORM` (Variable) - The platform of the server you're deploying to. Options are wordpress or laravel.
-- ❗️ `PRODUCTION_URL` (Variable) - The production URL where deployments will deploy.
-- ❗️ `STAGING_URL` (Variable) - The staging URL where deployments will deploy.
+> The SSH host IP address for the production site. ( ***IE** 123.45.678.9* )
+```
+PROD_SSH_PORT
+```
+> The SSH port for connecting to the production server. ( ***IE** 123456* )
+```
+PROD_SSH_USER
+```
+> The user used to connect and log in to the production server via SSH. ( ***IE** site_user* )
+```
+RC_REMOTE_WEB_ROOT
+```
+> The web root for the staging WordPress install. This is the location where wp-config.php should be set. Input the path without a trailing slash. On Kinsta, you can get this from the “Info” tab. ( ***IE** /www/sitename/public* )
+```
+RC_SSH_HOST
+```
+> The SSH host IP address for the staging site. ( ***IE** 123.45.678.9* )
+```
+RC_SSH_PORT
+```
+> The SSH port for connecting to the staging server. ( ***IE** 123456* )
+```
+RC_SSH_USER
+```
+> The user used to connect and log in to the staging server via SSH. ( ***IE** site_user* )
+```
+SLACK_CHANNEL_ID
+```
+> This is the specific Slack channel where notifications should be posted. You can find this ID, on Slack, by going to the channel. Click on the channel name in the top bar.
 ---
-### WP Engine Set Up
-- ❗️ `WPENGINE_DEPLOY` (Variable) - Set variable to true to turn on.
-- ❗️ `WPE_PROD` (Variable) - The WP Engine production environment name.
-- ❗️ `WPE_STAGING` (Variable) - The WP Engine staging environment name.
+#### Variables
+```
+PLATFORM
+```
+> The platform of the server you're deploying to. Options are `wordpress` or `laravel`.
+```
+PRODUCTION_URL
+```
+> The production URL where deployments will deploy.
+```
+STAGING_URL
+```
+> The staging URL where deployments will deploy.
+---
+#### WP Engine
+```
+WPENGINE_DEPLOY
+```
+> (Variable) Set variable to true to turn on.
+```
+WPE_PROD
+```
+> (Variable) The WP Engine production environment name.
+```
+WPE_STAGING
+```
+> (Variable) The WP Engine staging environment name.
 ---
 - `SSH_PRIVATE_KEY` - The private key for the remote server. This is already set on the organizational level.
 - `SLACK_BOT_API_KEY` - The Slack Bot API key is an API key used to interact with all of Built Mighty’s Slack channels. It allows us to post success and failure notifications to Slack channels related to each project. This is already set on the organizational level.
