@@ -45,7 +45,7 @@ Add the following Action secrets/variables to the repo, by going to the reposito
 ```
 PROD_REMOTE_WEB_ROOT
 ```
-The web root for the production WordPress install. This is the location where wp-config.php should be set. Input the path without a trailing slash. On Kinsta, you can get this from the “Info” tab. ( ***IE** /www/sitename/public* )
+> The web root for the production WordPress install. This is the location where wp-config.php should be set. Input the path without a trailing slash. On Kinsta, you can get this from the “Info” tab. ( ***IE** /www/sitename/public* )
 ```
 PROD_SSH_HOST
 ```
