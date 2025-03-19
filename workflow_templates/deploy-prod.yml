@@ -60,25 +60,6 @@ jobs:
           environment-url: ${{ vars.PRODUCTION_URL }}
           environment: production
 
-      # Get the last merged branch.
-      - name: Get Last Merged
-        id: last-merged
-        run: |
-          # Get the current release branch name
-          RELEASE_BRANCH=${{ github.event.release.target_commitish }}
-          
-          # Find the last merge commit on the release branch
-          LAST_MERGE=$(git log --merges --oneline -1 $RELEASE_BRANCH | awk '{print $1}')
-          
-          # Determine the branch merged in the last merge commit
-          LAST_BRANCH=$(git name-rev --name-only $LAST_MERGE | cut -d/ -f2-)
-          
-          echo "Last merge commit: $LAST_MERGE"
-          echo "Last branch merged: $LAST_BRANCH"
-          
-          # Set the output for use in later steps
-          echo "branch=$LAST_BRANCH" >> $GITHUB_ENV
-
       ## 2. Sets up deployment keys.
       # Setup Deployment SSH Key
       - name: Setup Deployment SSH Key
@@ -250,12 +231,6 @@ jobs:
             fi
           fi
         id: platform_scripts
-
-      # Delete using last merged branch.
-      - name: Delete Last Merged Branch
-        if: ${{ steps.check_uncommitted.outcome == 'success' && steps.deploy_prod.outcome == 'success' }}
-        run: |
-          git push origin --delete ${{ steps.last-merged.outputs.branch }}
 
       # Deploy Success Status.
       - name: Successful GitHub Deployment
