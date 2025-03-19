@@ -38,7 +38,19 @@ After running the command, you should see the `.github/workflows` folder added t
 
 Add the following Action secrets/variables to the repo, by going to the repository > Settings > Secrets and variables >  Actions.
 
-> ❗️ = Required
+❗️ = **Required**
+
+#### Secrets
+
+```
+PROD_REMOTE_WEB_ROOT
+```
+The web root for the production WordPress install. This is the location where wp-config.php should be set. Input the path without a trailing slash. On Kinsta, you can get this from the “Info” tab. ( ***IE** /www/sitename/public* )
+```
+PROD_SSH_HOST
+```
+The SSH host IP address for the production site. ( ***IE** 123.45.678.9* )
+
 
 - ❗️ `PROD_REMOTE_WEB_ROOT` (Secret) - The web root for the production WordPress install. This is the location where wp-config.php should be set. Input the path without a trailing slash. On Kinsta, you can get this from the “Info” tab. ( ***IE** /www/sitename/public* )
 - ❗️ `PROD_SSH_HOST` (Secret) - The SSH host IP address for the production site. ( ***IE** 123.45.678.9* )
