@@ -1,7 +1,7 @@
 
 <p align="center"><a href="https://builtmighty.com" target="_blank"><img src="https://github.com/builtmighty/.github/assets/7398228/b866e098-b7e3-443c-9a97-68aa17804236" width="700"></a></p>
 
- <h4 align="center">- Version 1.9.0 -</h4>
+ <h4 align="center">- Version 2.0.0 -</h4>
 
 
 ## Built Mighty CI/CD
@@ -14,6 +14,7 @@ This repo is used to automate our CI/CD pipelines using GitHub Actions. It sets 
 
 - [Adding to Repo](#adding-to-repo)
 - [Action Secrets/Variables](#action-secrets-variables)
+- [Triggers](#triggers)
 - [Additional Resources](#additional-resources)
 
 ## Adding to Repo
@@ -63,6 +64,11 @@ Add the following Action secrets/variables to the repo, by going to the reposito
 - `BOT_SIGNING_KEY` - The bot signing key is a GitHub commit signing key, which allows our automated bot to grab uncommitted code on production or staging, commit it to a branch, and that code is verified with a proper signature. This is already set on the organizational level.
 - `WPE_SSH_KEY` - The WP Engine SSH deployment key, which is already set at the organization level. You can override it within the repository, if need be.
 ---
+
+## Triggers
+Linting occurs automatically when a pull request is opened from a `feature/branch` into a `rc/x.x.x` branch OR from a `rc/x.x.x` into `main/prod/production`.
+
+Deployments to staging occur after a pull request is merged from a `feature/branch` into a `rc/x.x.x` branch. Production deployments happen when a new release is **published**.
 
 ## Additional Resources
 
