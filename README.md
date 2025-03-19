@@ -66,9 +66,9 @@ Add the following Action secrets/variables to the repo, by going to the reposito
 ---
 
 ## Triggers
-Linting occurs automatically when a pull request is opened from a `feature/branch` into a `rc/x.x.x` branch OR from a `rc/x.x.x` into `main/prod/production`.
+Linting occurs automatically when a pull request is opened from a `feature/branch` into an `rc/x.x.x` branch OR from an `rc/x.x.x` into `main/prod/production`.
 
-Deployments to staging occur after a pull request is merged from a `feature/branch` into a `rc/x.x.x` branch. Production deployments happen when a new release is **published**.
+Deployments to staging occur after a pull request is merged from a `feature/branch` into an `rc/x.x.x` branch. Production deployments happen when a new release is **published**.
 
 ## Additional Resources
 
