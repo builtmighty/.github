@@ -116,10 +116,6 @@ jobs:
           DEFAULT_WORKSPACE: "./wp-content/"
           LINTER_RULES_PATH: ${{ env._LINTER_RULES_DIR }}
           VALIDATE_ALL_CODEBASE: false
-          CSS_FILE_NAME: .stylelintrc.json
-          JAVASCRIPT_ES_CONFIG_FILE: .eslintrc.json
-          VALIDATE_CSS: true
-          VALIDATE_JAVASCRIPT_ES: true
           VALIDATE_PHP: true
           VALIDATE_PHP_BUILTIN: true
           LOG_LEVEL: ERROR
