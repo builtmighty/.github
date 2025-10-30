@@ -1,0 +1,111 @@
+name: Copilot review gate (wait)
+
+# Runs on PR events that target rc/*
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+    branches:
+      - 'rc/*'
+
+# Use pull_request_target so the job runs in the context of the base repo (has permission to create/update checks).
+# CARE: do not run untrusted PR code with pull_request_target.
+jobs:
+  wait-for-copilot:
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write        # allow creating/updating check runs
+      pull-requests: read  # read PR review threads
+      contents: read
+    steps:
+      - name: Poll Copilot and manage check run
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const pr = context.payload.pull_request.number;
+            const head_sha = context.payload.pull_request.head.sha;
+            const checkName = "copilot-review";
+
+            // 1) create a check run in_progress
+            const { data: check } = await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: checkName,
+              head_sha,
+              status: "in_progress",
+              started_at: new Date().toISOString(),
+            });
+
+            // Polling config (tweak as you like)
+            const pollIntervalSec = 15;     // seconds between polls
+            const maxWaitSec = 60 * 30;     // total max wait (30 minutes). Adjust as desired.
+
+            const isCopilotComment = (comment) => {
+              // Adjust this predicate to reliably detect Copilot review comments in your org.
+              // Example heuristics:
+              //  - comment.user.login contains 'copilot'
+              //  - some installations will post as 'github-copilot' or 'github-copilot-preview'
+              // Inspect actual comment.user.login values and adjust accordingly.
+              if (!comment.user || !comment.user.login) return false;
+              const login = comment.user.login.toLowerCase();
+              return login.includes("copilot") || login.includes("github-copilot");
+            };
+
+            let elapsed = 0;
+            let unresolvedFound = true;
+
+            while (elapsed < maxWaitSec) {
+              // fetch review threads
+              const { data: threads } = await github.request(
+                "GET /repos/{owner}/{repo}/pulls/{pull_number}/review_threads",
+                {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr,
+                }
+              );
+
+              // look for unresolved threads that are from Copilot (or include a Copilot comment)
+              const unresolvedByCopilot = threads.filter(t => !t.resolved && t.comments.some(isCopilotComment));
+
+              if (unresolvedByCopilot.length === 0) {
+                unresolvedFound = false;
+                break;
+              }
+
+              // still unresolved -> sleep
+              await new Promise(r => setTimeout(r, pollIntervalSec * 1000));
+              elapsed += pollIntervalSec;
+            }
+
+            if (!unresolvedFound) {
+              // Success: Copilot conversations resolved — complete the check run with success
+              await github.rest.checks.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                check_run_id: check.id,
+                status: "completed",
+                conclusion: "success",
+                completed_at: new Date().toISOString(),
+                output: {
+                  title: checkName,
+                  summary: "Copilot review conversations resolved; gate passed.",
+                },
+              });
+              core.setOutput("copilot_status", "resolved");
+              return;
+            }
+
+            // Timeout reached and still unresolved -> leave check as failed/neutral (choose behavior)
+            await github.rest.checks.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              check_run_id: check.id,
+              status: "completed",
+              conclusion: "failure",
+              completed_at: new Date().toISOString(),
+              output: {
+                title: checkName,
+                summary: `Timed out after ${maxWaitSec} seconds waiting for Copilot to resolve review threads.`,
+              },
+            });
+            core.setOutput("copilot_status", "timeout");
