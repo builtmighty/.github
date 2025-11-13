@@ -1,3 +1,8 @@
+> [!TIP]
+> <img width="64" height="40" alt="image" src="https://github.com/user-attachments/assets/2c888c95-6811-402f-97d0-fbf1e367b38c" style="max-height:150px" /><br>
+> **Copilot Code Review**
+> Copilot will automatically review your code if you're merging a branch into the `rc/`. Please let it finish before merging. You can view more documentation [📓 here 📓](https://builtmighty.atlassian.net/wiki/spaces/BMH/pages/755793924/Copilot+Code+Review).
+
 ## What Type of Change is This?
 - [ ] 🐛 Bug fix
 - [ ] ✨ Introduced New Features
