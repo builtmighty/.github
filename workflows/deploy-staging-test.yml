@@ -1,0 +1,31 @@
+name: 🔨 Staging Deployment (Test)
+
+# Test with broader triggers first
+on:
+  pull_request:
+    branches:
+      - rc/*
+      - main
+      - master
+    types:
+      - closed
+  
+  # Also allow manual trigger for testing
+  workflow_dispatch:
+
+jobs:
+  test-trigger:
+    name: Test Workflow Trigger
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Workflow Triggered
+        run: |
+          echo "🎉 Workflow is running!"
+          echo "Repository: ${{ github.repository }}"
+          echo "Event: ${{ github.event_name }}"
+          echo "Branch: ${{ github.event.pull_request.base.ref || github.ref_name }}"
+          echo "Merged: ${{ github.event.pull_request.merged }}"
+          echo ""
+          echo "This is just a test step to verify the workflow runs."
