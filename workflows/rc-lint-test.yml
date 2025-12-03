@@ -13,7 +13,7 @@
 # 8. Run final job status check.
 
 ##====== Workflow ======##
-name: 🧑‍💻 Release Candidate Code Validation
+name: 🧑‍💻 Global Code Validation
 env:
   DEFAULT_BRANCH: ${{ github.base_ref }}
   _LINTER_RULES_DIR: .github/linters
@@ -29,8 +29,8 @@ on:
 
 # Workflow jobs.
 jobs:
-  # Workflow job of code-check-stage.
-  code-check-stage:
+  # Workflow job of code-check-global.
+  code-check-global:
     # Runner to run
     runs-on: [Large-Runner-Ubuntu]
     permissions:
