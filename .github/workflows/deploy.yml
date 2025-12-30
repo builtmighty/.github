@@ -208,6 +208,15 @@ jobs:
           deployment-id: ${{ steps.github_deployment.outputs.deployment_id }}
           state: 'failure'
 
+      - name: Debug Slack Token
+        if: always()
+        run: |
+          if [ -n "${{ secrets.slack_bot_token }}" ]; then
+            echo "✓ Slack bot token is present"
+          else
+            echo "✗ Slack bot token is MISSING"
+          fi
+
       - name: Slack Failure Notification
         id: slack_failure
         if: failure()
