@@ -1,0 +1,296 @@
+# Built Mighty Deployment
+name: 🚀 Deployment
+
+on:
+  workflow_call:
+    inputs:
+      site_url:
+        description: 'Site URL'
+        required: true
+        type: string
+      environment: 
+        description: 'Deployment environment name'
+        required: false
+        type: string
+        default: 'production'
+      exclude_patterns:
+        description: 'Additional rsync exclude patterns (comma-separated)'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      remote_host:
+        description: 'Server hostname'
+        required: true
+        type: string
+      remote_user:
+        description: 'Server SSH user'
+        required: true
+        type: string
+      remote_path:
+        description: 'Server deployment path'
+        required: true
+        type: string
+      remote_port:
+        description: 'Server SSH port'
+        required: false
+        type: string
+        default: '22'
+      ssh_private_key:
+        description: 'SSH private key for deployment'
+        required: true
+      slack_channel_id:
+        description: 'Slack channel ID for notifications'
+        required: false
+        type: string
+        default: ''
+      slack_team_id:
+        description: 'Slack team ID for notifications'
+        required: false
+      slack_bot_token:
+        description: 'Slack bot token for notifications'
+        required: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.ssh_private_key }}
+      
+      - name: Add Server to Known Hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H -p ${{ inputs.remote_port }} ${{ inputs.remote_host }} >> ~/.ssh/known_hosts
+    
+      - uses: chrnorm/deployment-action@v2
+        name: Create GitHub Deployment
+        id: github_deployment
+        with:
+          token: '${{ github.token }}'
+          environment-url: ${{ inputs.site_url }}
+          environment: ${{ inputs.environment }}
+      
+      - name: Record Deployment Start Time
+        id: deployment_timer
+        run: |
+          echo "start_time=$(date +%s)" >> $GITHUB_OUTPUT
+          echo "🕐 Deployment started at $(date '+%Y-%m-%d %H:%M:%S %Z')"
+      
+      - name: Enable Maintenance Mode
+        run: |
+          echo "Enabling maintenance mode..."
+          ssh -p ${{ inputs.remote_port }} ${{ inputs.remote_user }}@${{ inputs.remote_host }} "touch ${{ inputs.remote_path }}/.maintenance"
+          echo "✓ Maintenance mode enabled"
+      
+      - name: Download Previous Manifest
+        id: old-manifest
+        run: |
+          echo "Checking for previous deployment manifest..."
+          if ssh -p ${{ inputs.remote_port }} ${{ inputs.remote_user }}@${{ inputs.remote_host }} "test -f ${{ inputs.remote_path }}/.deployment-manifest.txt"; then
+            scp -P ${{ inputs.remote_port }} ${{ inputs.remote_user }}@${{ inputs.remote_host }}:${{ inputs.remote_path }}/.deployment-manifest.txt /tmp/old-manifest.txt
+            echo "manifest_exists=true" >> $GITHUB_OUTPUT
+            echo "✓ Previous manifest downloaded"
+          else
+            echo "manifest_exists=false" >> $GITHUB_OUTPUT
+            echo "⚠ No previous manifest found (first deployment?)"
+          fi
+      
+      - name: Generate Current Manifest
+        run: |
+          echo "Generating current deployment manifest..."
+          find . -type f \
+            -not -path "*/.git/*" \
+            -not -path "*/node_modules/*" \
+            -not -path "*/.github/*" \
+            -not -name ".gitignore" \
+            -not -name ".deployment-manifest.txt" \
+            -not -name "deploy.sh" \
+            -not -name "README.md" \
+            | sed 's|^\./||' \
+            | sort > /tmp/new-manifest.txt
+          echo "✓ Generated manifest with $(wc -l < /tmp/new-manifest.txt) files"
+      
+      - name: Compare Manifests and Remove Old Files
+        if: steps.old-manifest.outputs.manifest_exists == 'true'
+        run: |
+          echo "Comparing manifests to find removed files..."
+          comm -23 /tmp/old-manifest.txt /tmp/new-manifest.txt > /tmp/files-to-remove.txt
+          
+          if [ -s /tmp/files-to-remove.txt ]; then
+            echo "Found $(wc -l < /tmp/files-to-remove.txt) files to remove:"
+            cat /tmp/files-to-remove.txt
+            
+            echo "Removing old files from deployment target..."
+            while IFS= read -r file; do
+              if ssh -p ${{ inputs.remote_port }} ${{ inputs.remote_user }}@${{ inputs.remote_host }} "rm -f ${{ inputs.remote_path }}/${file}"; then
+                echo "  ✓ Removed: ${file}"
+              else
+                echo "  ✗ Failed to remove: ${file}"
+              fi
+            done < /tmp/files-to-remove.txt
+          else
+            echo "✓ No files to remove"
+          fi
+      
+      - name: Build rsync Exclude Parameters
+        id: rsync-excludes
+        run: |
+          # Base excludes
+          EXCLUDES="--exclude=.git/ --exclude=node_modules/ --exclude=.github/ --exclude=.gitignore --exclude=deploy.sh --exclude=.deployment-manifest.txt --exclude=wp-config.php --exclude=wp-content/uploads/ --exclude=.htaccess"
+          
+          # Add custom excludes if provided
+          if [ -n "${{ inputs.exclude_patterns }}" ]; then
+            IFS=',' read -ra PATTERNS <<< "${{ inputs.exclude_patterns }}"
+            for pattern in "${PATTERNS[@]}"; do
+              EXCLUDES="$EXCLUDES --exclude=${pattern}"
+            done
+          fi
+          
+          echo "excludes=$EXCLUDES" >> $GITHUB_OUTPUT
+      
+      - name: Sync Files to Deployment Target
+        run: |
+          echo "Syncing files to deployment target..."
+          rsync -avz \
+            ${{ steps.rsync-excludes.outputs.excludes }} \
+            -e "ssh -p ${{ inputs.remote_port }}" \
+            ./ ${{ inputs.remote_user }}@${{ inputs.remote_host }}:${{ inputs.remote_path }}/
+          echo "✓ Files synced"
+      
+      - name: Upload New Manifest to Deployment Target
+        run: |
+          echo "Saving deployment manifest to deployment target..."
+          scp -P ${{ inputs.remote_port }} /tmp/new-manifest.txt ${{ inputs.remote_user }}@${{ inputs.remote_host }}:${{ inputs.remote_path }}/.deployment-manifest.txt
+          echo "✓ Manifest saved"
+      
+      - name: Disable Maintenance Mode
+        if: always()
+        run: |
+          echo "Disabling maintenance mode..."
+          ssh -p ${{ inputs.remote_port }} ${{ inputs.remote_user }}@${{ inputs.remote_host }} "rm -f ${{ inputs.remote_path }}/.maintenance"
+          echo "✓ Maintenance mode disabled"
+      
+      - name: Post-Deployment Health Check
+        if: success()
+        run: |
+          echo "Running health check on ${{ inputs.site_url }}..."
+          
+          # Wait a moment for services to stabilize
+          sleep 3
+          
+          # Make request and capture HTTP status
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L --max-time 30 "${{ inputs.site_url }}")
+          
+          echo "HTTP Status: $HTTP_STATUS"
+          
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 400 ]; then
+            echo "✓ Health check passed! Site is responding with status $HTTP_STATUS"
+          else
+            echo "⚠ Health check warning: Site returned status $HTTP_STATUS"
+            echo "This may indicate an issue, but deployment will continue."
+          fi
+
+      - name: Successful GitHub Deployment
+        if: success()
+        uses: chrnorm/deployment-status@v2
+        with:
+          token: '${{ github.token }}'
+          environment-url: ${{ steps.github_deployment.outputs.environment_url }}
+          deployment-id: ${{ steps.github_deployment.outputs.deployment_id }}
+          state: 'success'
+      
+      - name: Failed GitHub Deployment
+        if: failure()
+        uses: chrnorm/deployment-status@v2
+        with:
+          token: '${{ github.token }}'
+          environment-url: ${{ steps.github_deployment.outputs.environment_url }}
+          deployment-id: ${{ steps.github_deployment.outputs.deployment_id }}
+          state: 'failure'
+
+      - name: Slack Failure Notification
+        id: slack_failure
+        if: failure() && inputs.slack_channel_id != ''
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          channel-id: ${{ inputs.slack_channel_id }}
+          payload: |
+            {
+              "text":"🤯 Failed ${{ inputs.environment }} deployment",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*🤯 Failed ${{ inputs.environment }} deployment* | Looks like something went wrong with the deployment. Check the logs."
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN_API }}
+
+      - name: Slack Success Notification
+        id: slack_success
+        if: success() && inputs.slack_channel_id != ''
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          channel-id: ${{ inputs.slack_channel_id }}
+          payload: |
+            {
+              "text":"🚀 ${{ inputs.environment }} deployment successful",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*🚀 ${{ inputs.environment }} deployment successful* | We had a successful deployment to ${{ inputs.environment }} from ${{ github.triggering_actor }}!"
+                  },
+                  "accessory": {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "🔗 View ${{ inputs.environment }}",
+                      "emoji": true
+                    },
+                    "value": "click_me_123",
+                    "url": "${{ inputs.site_url }}",
+                    "action_id": "button-action"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN_API }}
+      
+      - name: Deployment Summary
+        if: always()
+        run: |
+          # Calculate deployment duration
+          END_TIME=$(date +%s)
+          START_TIME=${{ steps.deployment_timer.outputs.start_time }}
+          DURATION=$((END_TIME - START_TIME))
+          MINUTES=$((DURATION / 60))
+          SECONDS=$((DURATION % 60))
+          
+          echo "================================"
+          echo "📊 DEPLOYMENT SUMMARY"
+          echo "================================"
+          echo "Status: ${{ job.status }}"
+          echo "Server: ${{ inputs.remote_host }}"
+          echo "Path: ${{ inputs.remote_path }}"
+          echo "URL: ${{ inputs.site_url }}"
+          echo "Duration: ${MINUTES}m ${SECONDS}s"
+          echo "Files deployed: $(wc -l < /tmp/new-manifest.txt)"
+          if [ -f /tmp/files-to-remove.txt ]; then
+            echo "Files removed: $(wc -l < /tmp/files-to-remove.txt)"
+          fi
+          echo "Completed at: $(date '+%Y-%m-%d %H:%M:%S %Z')"
+          echo "================================"
