@@ -42,7 +42,7 @@ on:
         required: false
       slack_bot_token:
         description: 'Slack bot token for notifications'
-        required: false
+        required: true
 
 jobs:
   deploy:
@@ -228,7 +228,7 @@ jobs:
               ]
             }
         env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN_API }}
+          SLACK_BOT_TOKEN: ${{ secrets.slack_bot_token }}
 
       - name: Slack Success Notification
         id: slack_success
@@ -261,7 +261,7 @@ jobs:
               ]
             }
         env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN_API }}
+          SLACK_BOT_TOKEN: ${{ secrets.slack_bot_token }}
       
       - name: Deployment Summary
         if: always()
