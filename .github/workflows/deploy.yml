@@ -42,7 +42,7 @@ on:
         required: false
       slack_bot_token:
         description: 'API key for Slack bot'
-        required: false
+        required: true
 
 jobs:
   deploy:
