@@ -79,7 +79,7 @@ jobs:
       - name: Enable Maintenance Mode
         run: |
           echo "Enabling maintenance mode..."
-          ssh -p ${{ secrets.remote_port || '22' }} ${{ secrets.remote_user }}@${{ secrets.remote_host }} "touch ${{ secrets.remote_path }}/.maintenance"
+          ssh -p ${{ secrets.remote_port || '22' }} ${{ secrets.remote_user }}@${{ secrets.remote_host }} "echo '<?php \$upgrading = time(); ?>' > ${{ secrets.remote_path }}/.maintenance"
           echo "✓ Maintenance mode enabled"
       
       - name: Download Previous Manifest
