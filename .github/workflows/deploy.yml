@@ -60,7 +60,7 @@ jobs:
       - name: Add Server to Known Hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H -p ${{ inputs.remote_port }} ${{ inputs.remote_host }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H -p ${{ secrets.remote_port || '22' }} ${{ secrets.remote_host }} >> ~/.ssh/known_hosts
     
       - uses: chrnorm/deployment-action@v2
         name: Create GitHub Deployment
@@ -79,15 +79,15 @@ jobs:
       - name: Enable Maintenance Mode
         run: |
           echo "Enabling maintenance mode..."
-          ssh -p ${{ inputs.remote_port }} ${{ inputs.remote_user }}@${{ inputs.remote_host }} "touch ${{ inputs.remote_path }}/.maintenance"
+          ssh -p ${{ secrets.remote_port || '22' }} ${{ secrets.remote_user }}@${{ secrets.remote_host }} "touch ${{ secrets.remote_path }}/.maintenance"
           echo "✓ Maintenance mode enabled"
       
       - name: Download Previous Manifest
         id: old-manifest
         run: |
           echo "Checking for previous deployment manifest..."
-          if ssh -p ${{ inputs.remote_port }} ${{ inputs.remote_user }}@${{ inputs.remote_host }} "test -f ${{ inputs.remote_path }}/.deployment-manifest.txt"; then
-            scp -P ${{ inputs.remote_port }} ${{ inputs.remote_user }}@${{ inputs.remote_host }}:${{ inputs.remote_path }}/.deployment-manifest.txt /tmp/old-manifest.txt
+          if ssh -p ${{ secrets.remote_port || '22' }} ${{ secrets.remote_user }}@${{ secrets.remote_host }} "test -f ${{ secrets.remote_path }}/.deployment-manifest.txt"; then
+            scp -P ${{ secrets.remote_port || '22' }} ${{ secrets.remote_user }}@${{ secrets.remote_host }}:${{ secrets.remote_path }}/.deployment-manifest.txt /tmp/old-manifest.txt
             echo "manifest_exists=true" >> $GITHUB_OUTPUT
             echo "✓ Previous manifest downloaded"
           else
@@ -122,7 +122,7 @@ jobs:
             
             echo "Removing old files from deployment target..."
             while IFS= read -r file; do
-              if ssh -p ${{ inputs.remote_port }} ${{ inputs.remote_user }}@${{ inputs.remote_host }} "rm -f ${{ inputs.remote_path }}/${file}"; then
+              if ssh -p ${{ secrets.remote_port || '22' }} ${{ secrets.remote_user }}@${{ secrets.remote_host }} "rm -f ${{ secrets.remote_path }}/${file}"; then
                 echo "  ✓ Removed: ${file}"
               else
                 echo "  ✗ Failed to remove: ${file}"
@@ -153,21 +153,21 @@ jobs:
           echo "Syncing files to deployment target..."
           rsync -avz \
             ${{ steps.rsync-excludes.outputs.excludes }} \
-            -e "ssh -p ${{ inputs.remote_port }}" \
-            ./ ${{ inputs.remote_user }}@${{ inputs.remote_host }}:${{ inputs.remote_path }}/
+            -e "ssh -p ${{ secrets.remote_port || '22' }}" \
+            ./ ${{ secrets.remote_user }}@${{ secrets.remote_host }}:${{ secrets.remote_path }}/
           echo "✓ Files synced"
       
       - name: Upload New Manifest to Deployment Target
         run: |
           echo "Saving deployment manifest to deployment target..."
-          scp -P ${{ inputs.remote_port }} /tmp/new-manifest.txt ${{ inputs.remote_user }}@${{ inputs.remote_host }}:${{ inputs.remote_path }}/.deployment-manifest.txt
+          scp -P ${{ secrets.remote_port || '22' }} /tmp/new-manifest.txt ${{ secrets.remote_user }}@${{ secrets.remote_host }}:${{ secrets.remote_path }}/.deployment-manifest.txt
           echo "✓ Manifest saved"
       
       - name: Disable Maintenance Mode
         if: always()
         run: |
           echo "Disabling maintenance mode..."
-          ssh -p ${{ inputs.remote_port }} ${{ inputs.remote_user }}@${{ inputs.remote_host }} "rm -f ${{ inputs.remote_path }}/.maintenance"
+          ssh -p ${{ secrets.remote_port || '22' }} ${{ secrets.remote_user }}@${{ secrets.remote_host }} "rm -f ${{ secrets.remote_path }}/.maintenance"
           echo "✓ Maintenance mode disabled"
       
       - name: Post-Deployment Health Check
@@ -277,8 +277,8 @@ jobs:
           echo "📊 DEPLOYMENT SUMMARY"
           echo "================================"
           echo "Status: ${{ job.status }}"
-          echo "Server: ${{ inputs.remote_host }}"
-          echo "Path: ${{ inputs.remote_path }}"
+          echo "Server: ${{ secrets.remote_host }}"
+          echo "Path: ${{ secrets.remote_path }}"
           echo "URL: ${{ inputs.site_url }}"
           echo "Duration: ${MINUTES}m ${SECONDS}s"
           echo "Files deployed: $(wc -l < /tmp/new-manifest.txt)"
