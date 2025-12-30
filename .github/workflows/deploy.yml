@@ -167,7 +167,7 @@ jobs:
         if: always()
         run: |
           echo "Disabling maintenance mode..."
-          ssh -p ${{ secrets.remote_port || '22' }} ${{ secrets.remote_user }}@${{ secrets.remote_host }} "rm -f ${{ secrets.remote_path }}/.maintenance"
+          ssh -p ${{ secrets.remote_port || '22' }} ${{ secrets.remote_user }}@${{ secrets.remote_host }} "rm -f ${{ secrets.remote_path }}/.maintenance && wp core check-update --force-check --allow-root"
           echo "✓ Maintenance mode disabled"
       
       - name: Post-Deployment Health Check
