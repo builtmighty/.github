@@ -1,0 +1,26 @@
+name: 🚀 Production Deployment
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+    if: github.event.release.prerelease == false
+    uses: builtmighty/.github/.github/workflows/deploy.yml@main
+    with:
+      site_url: ${{ vars.PRODUCTION_URL }}
+      environment: 'production'
+    secrets:
+      remote_host: ${{ secrets.PROD_SSH_HOST }}
+      remote_user: ${{ secrets.PROD_SSH_USER }}
+      remote_path: ${{ secrets.PROD_REMOTE_WEB_ROOT }}
+      remote_port: ${{ secrets.PROD_SSH_PORT }}
+      ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+      slack_channel_id: ${{ secrets.SLACK_CHANNEL_ID }}
+      slack_team_id: ${{ secrets.SLACK_TEAM_ID }}
+      slack_bot_token: ${{ secrets.SLACK_BOT_API_KEY }}
