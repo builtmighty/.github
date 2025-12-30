@@ -4,6 +4,21 @@ name: 🚀 Deployment
 on:
   workflow_call:
     inputs:
+      site_url:
+        description: 'Site URL'
+        required: true
+        type: string
+      environment: 
+        description: 'Deployment environment name'
+        required: false
+        type: string
+        default: 'production'
+      exclude_patterns:
+        description: 'Additional rsync exclude patterns (comma-separated)'
+        required: false
+        type: string
+        default: ''
+    secrets:
       remote_host:
         description: 'Server hostname'
         required: true
@@ -21,32 +36,17 @@ on:
         required: false
         type: string
         default: '22'
-      site_url:
-        description: 'Site URL'
+      ssh_private_key:
+        description: 'SSH private key for deployment'
         required: true
-        type: string
-      environment: 
-        description: 'Deployment environment name'
-        required: false
-        type: string
-        default: 'production'
       slack_channel_id:
         description: 'Slack channel ID for notifications'
         required: false
         type: string
         default: ''
-      exclude_patterns:
-        description: 'Additional rsync exclude patterns (comma-separated)'
-        required: false
-        type: string
-        default: ''
-    secrets:
       slack_team_id:
         description: 'Slack team ID for notifications'
         required: false
-      ssh_private_key:
-        description: 'SSH private key for deployment'
-        required: true
       slack_bot_token:
         description: 'Slack bot token for notifications'
         required: false
