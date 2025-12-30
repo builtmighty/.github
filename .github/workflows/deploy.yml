@@ -210,10 +210,10 @@ jobs:
 
       - name: Slack Failure Notification
         id: slack_failure
-        if: failure() && inputs.slack_channel_id != ''
+        if: failure() && secrets.slack_channel_id != ''
         uses: slackapi/slack-github-action@v1.25.0
         with:
-          channel-id: ${{ inputs.slack_channel_id }}
+          channel-id: ${{ secrets.slack_channel_id }}
           payload: |
             {
               "text":"🤯 Failed ${{ inputs.environment }} deployment",
@@ -232,10 +232,10 @@ jobs:
 
       - name: Slack Success Notification
         id: slack_success
-        if: success() && inputs.slack_channel_id != ''
+        if: success() && secrets.slack_channel_id != ''
         uses: slackapi/slack-github-action@v1.25.0
         with:
-          channel-id: ${{ inputs.slack_channel_id }}
+          channel-id: ${{ secrets.slack_channel_id }}
           payload: |
             {
               "text":"🚀 ${{ inputs.environment }} deployment successful",
