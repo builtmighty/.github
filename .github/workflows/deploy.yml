@@ -40,6 +40,9 @@ on:
       slack_team_id:
         description: 'Slack team ID for notifications'
         required: false
+      slack_bot_token:
+        description: 'API key for Slack bot'
+        required: false
 
 jobs:
   deploy:
@@ -208,7 +211,7 @@ jobs:
       - name: Debug Slack Token
         if: always()
         run: |
-          if [ -n "${{ secrets.SLACK_BOT_TOKEN }}" ]; then
+          if [ -n "${{ secrets.SLACK_BOT_KEY }}" ]; then
             echo "✓ Slack bot token is present"
           else
             echo "✗ Slack bot token is MISSING"
@@ -234,7 +237,7 @@ jobs:
               ]
             }
         env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_KEY }}
 
       - name: Slack Success Notification
         id: slack_success
@@ -267,7 +270,7 @@ jobs:
               ]
             }
         env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_KEY }}
       
       - name: Deployment Summary
         if: always()
