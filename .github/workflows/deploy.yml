@@ -22,28 +22,21 @@ on:
       remote_host:
         description: 'Server hostname'
         required: true
-        type: string
       remote_user:
         description: 'Server SSH user'
         required: true
-        type: string
       remote_path:
         description: 'Server deployment path'
         required: true
-        type: string
       remote_port:
         description: 'Server SSH port'
         required: false
-        type: string
-        default: '22'
       ssh_private_key:
         description: 'SSH private key for deployment'
         required: true
       slack_channel_id:
         description: 'Slack channel ID for notifications'
         required: false
-        type: string
-        default: ''
       slack_team_id:
         description: 'Slack team ID for notifications'
         required: false
