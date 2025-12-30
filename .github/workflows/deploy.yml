@@ -36,7 +36,7 @@ on:
         required: true
       slack_channel_id:
         description: 'Slack channel ID for notifications'
-        required: false
+        required: true
       slack_team_id:
         description: 'Slack team ID for notifications'
         required: false
@@ -210,7 +210,7 @@ jobs:
 
       - name: Slack Failure Notification
         id: slack_failure
-        if: failure() && secrets.slack_channel_id != ''
+        if: failure() && ${{ secrets.slack_channel_id }} != ''
         uses: slackapi/slack-github-action@v1.25.0
         with:
           channel-id: ${{ secrets.slack_channel_id }}
@@ -232,7 +232,7 @@ jobs:
 
       - name: Slack Success Notification
         id: slack_success
-        if: success() && secrets.slack_channel_id != ''
+        if: success() && ${{ secrets.slack_channel_id }} != ''
         uses: slackapi/slack-github-action@v1.25.0
         with:
           channel-id: ${{ secrets.slack_channel_id }}
