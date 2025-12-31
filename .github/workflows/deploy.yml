@@ -152,6 +152,8 @@ jobs:
         run: |
           echo "Syncing files to deployment target..."
           rsync -avz \
+            --checksum \
+            --itemize-changes \
             ${{ steps.rsync-excludes.outputs.excludes }} \
             -e "ssh -p ${{ secrets.remote_port || '22' }}" \
             ./ ${{ secrets.remote_user }}@${{ secrets.remote_host }}:${{ secrets.remote_path }}/
