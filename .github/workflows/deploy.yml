@@ -190,6 +190,34 @@ jobs:
             echo "This may indicate an issue, but deployment will continue."
           fi
 
+      - name: Delete Feature Branch After Staging Deployment
+        if: success() && inputs.environment == 'staging'
+        run: |
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          
+          echo "Checking if we should delete branch: $BRANCH_NAME"
+          
+          # Don't delete protected branches
+          if [[ "$BRANCH_NAME" == "main" ]] || [[ "$BRANCH_NAME" == "master" ]] || [[ "$BRANCH_NAME" == "develop" ]]; then
+            echo "⚠ Skipping deletion of protected branch: $BRANCH_NAME"
+            exit 0
+          fi
+          
+          # Check if branch exists remotely
+          if git ls-remote --exit-code --heads origin "$BRANCH_NAME" > /dev/null 2>&1; then
+            echo "Branch $BRANCH_NAME exists remotely"
+            
+            # Delete the branch
+            if git push origin --delete "$BRANCH_NAME"; then
+              echo "✓ Successfully deleted branch: $BRANCH_NAME"
+            else
+              echo "✗ Failed to delete branch: $BRANCH_NAME"
+              exit 1
+            fi
+          else
+            echo "⚠ Branch $BRANCH_NAME does not exist remotely (may have been already deleted)"
+          fi
+
       - name: Successful GitHub Deployment
         if: success()
         uses: chrnorm/deployment-status@v2
