@@ -44,10 +44,19 @@ on:
         description: 'API key for Slack bot'
         required: true
 
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 15
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -82,61 +91,11 @@ jobs:
           ssh -p ${{ secrets.remote_port || '22' }} ${{ secrets.remote_user }}@${{ secrets.remote_host }} "echo '<?php \$upgrading = time(); ?>' > ${{ secrets.remote_path }}/.maintenance"
           echo "✓ Maintenance mode enabled"
       
-      - name: Download Previous Manifest
-        id: old-manifest
-        run: |
-          echo "Checking for previous deployment manifest..."
-          if ssh -p ${{ secrets.remote_port || '22' }} ${{ secrets.remote_user }}@${{ secrets.remote_host }} "test -f ${{ secrets.remote_path }}/.deployment-manifest.txt"; then
-            scp -P ${{ secrets.remote_port || '22' }} ${{ secrets.remote_user }}@${{ secrets.remote_host }}:${{ secrets.remote_path }}/.deployment-manifest.txt /tmp/old-manifest.txt
-            echo "manifest_exists=true" >> $GITHUB_OUTPUT
-            echo "✓ Previous manifest downloaded"
-          else
-            echo "manifest_exists=false" >> $GITHUB_OUTPUT
-            echo "⚠ No previous manifest found (first deployment?)"
-          fi
-      
-      - name: Generate Current Manifest
-        run: |
-          echo "Generating current deployment manifest..."
-          find . -type f \
-            -not -path "*/.git/*" \
-            -not -path "*/node_modules/*" \
-            -not -path "*/.github/*" \
-            -not -name ".gitignore" \
-            -not -name ".deployment-manifest.txt" \
-            -not -name "deploy.sh" \
-            -not -name "README.md" \
-            | sed 's|^\./||' \
-            | sort > /tmp/new-manifest.txt
-          echo "✓ Generated manifest with $(wc -l < /tmp/new-manifest.txt) files"
-      
-      - name: Compare Manifests and Remove Old Files
-        if: steps.old-manifest.outputs.manifest_exists == 'true'
-        run: |
-          echo "Comparing manifests to find removed files..."
-          comm -23 /tmp/old-manifest.txt /tmp/new-manifest.txt > /tmp/files-to-remove.txt
-          
-          if [ -s /tmp/files-to-remove.txt ]; then
-            echo "Found $(wc -l < /tmp/files-to-remove.txt) files to remove:"
-            cat /tmp/files-to-remove.txt
-            
-            echo "Removing old files from deployment target..."
-            while IFS= read -r file; do
-              if ssh -p ${{ secrets.remote_port || '22' }} ${{ secrets.remote_user }}@${{ secrets.remote_host }} "rm -f ${{ secrets.remote_path }}/${file}"; then
-                echo "  ✓ Removed: ${file}"
-              else
-                echo "  ✗ Failed to remove: ${file}"
-              fi
-            done < /tmp/files-to-remove.txt
-          else
-            echo "✓ No files to remove"
-          fi
-      
       - name: Build rsync Exclude Parameters
         id: rsync-excludes
         run: |
           # Base excludes
-          EXCLUDES="--exclude=.git/ --exclude=node_modules/ --exclude=.github/ --exclude=.gitignore --exclude=deploy.sh --exclude=.deployment-manifest.txt --exclude=wp-config.php --exclude=wp-content/uploads/ --exclude=.htaccess"
+          EXCLUDES="--exclude=.git/ --exclude=node_modules/ --exclude=.github/ --exclude=.gitignore --exclude=deploy.sh --exclude=wp-config.php --exclude=wp-content/uploads/ --exclude=.htaccess"
           
           # Add custom excludes if provided
           if [ -n "${{ inputs.exclude_patterns }}" ]; then
@@ -154,23 +113,27 @@ jobs:
           rsync -avz \
             --checksum \
             --itemize-changes \
+            --stats \
+            --timeout=120 \
+            --delete-after \
             ${{ steps.rsync-excludes.outputs.excludes }} \
             -e "ssh -p ${{ secrets.remote_port || '22' }}" \
             ./ ${{ secrets.remote_user }}@${{ secrets.remote_host }}:${{ secrets.remote_path }}/
           echo "✓ Files synced"
-      
-      - name: Upload New Manifest to Deployment Target
-        run: |
-          echo "Saving deployment manifest to deployment target..."
-          scp -P ${{ secrets.remote_port || '22' }} /tmp/new-manifest.txt ${{ secrets.remote_user }}@${{ secrets.remote_host }}:${{ secrets.remote_path }}/.deployment-manifest.txt
-          echo "✓ Manifest saved"
-      
+
       - name: Disable Maintenance Mode
         if: always()
         run: |
           echo "Disabling maintenance mode..."
           ssh -p ${{ secrets.remote_port || '22' }} ${{ secrets.remote_user }}@${{ secrets.remote_host }} "rm -f ${{ secrets.remote_path }}/.maintenance && cd ${{ secrets.remote_path }} && wp core check-update --force-check --allow-root"
           echo "✓ Maintenance mode disabled"
+
+      - name: Flush Caches
+        if: success()
+        run: |
+          echo "Flushing WordPress caches..."
+          ssh -p ${{ secrets.remote_port || '22' }} ${{ secrets.remote_user }}@${{ secrets.remote_host }} "cd ${{ secrets.remote_path }} && wp cache flush --allow-root && wp rewrite flush --allow-root"
+          echo "✓ Caches flushed"
       
       - name: Post-Deployment Health Check
         if: success()
@@ -320,13 +283,8 @@ jobs:
           echo "📊 DEPLOYMENT SUMMARY"
           echo "================================"
           echo "Status: ${{ job.status }}"
-          echo "Server: ${{ secrets.remote_host }}"
-          echo "Path: ${{ secrets.remote_path }}"
+          echo "Environment: ${{ inputs.environment }}"
           echo "URL: ${{ inputs.site_url }}"
           echo "Duration: ${MINUTES}m ${SECONDS}s"
-          echo "Files deployed: $(wc -l < /tmp/new-manifest.txt)"
-          if [ -f /tmp/files-to-remove.txt ]; then
-            echo "Files removed: $(wc -l < /tmp/files-to-remove.txt)"
-          fi
           echo "Completed at: $(date '+%Y-%m-%d %H:%M:%S %Z')"
           echo "================================"
