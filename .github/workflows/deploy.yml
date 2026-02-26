@@ -95,7 +95,7 @@ jobs:
         id: rsync-excludes
         run: |
           # Base excludes
-          EXCLUDES="--exclude=.git/ --exclude=node_modules/ --exclude=.github/ --exclude=.gitignore --exclude=deploy.sh --exclude=wp-config.php --exclude=wp-content/uploads/ --exclude=.htaccess"
+          EXCLUDES="--exclude=.git/ --exclude=node_modules/ --exclude=.github/ --exclude=.gitignore --exclude=deploy.sh --exclude=wp-config.php --exclude=wp-content/uploads/ --exclude=.htaccess --exclude=.claude/ --exclude='*.md'"
           
           # Add custom excludes if provided
           if [ -n "${{ inputs.exclude_patterns }}" ]; then
