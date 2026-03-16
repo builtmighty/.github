@@ -8,7 +8,7 @@ on:
         description: 'Site URL'
         required: true
         type: string
-      environment: 
+      environment:
         description: 'Deployment environment name'
         required: false
         type: string
@@ -34,18 +34,9 @@ on:
       ssh_private_key:
         description: 'SSH private key for deployment'
         required: true
-      slack_channel_id:
-        description: 'Slack channel ID for notifications'
-        required: true
-      slack_team_id:
-        description: 'Slack team ID for notifications'
-        required: false
-      slack_bot_token:
-        description: 'API key for Slack bot'
-        required: true
 
 permissions:
-  contents: read
+  contents: write
   deployments: write
 
 concurrency:
@@ -60,43 +51,85 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-      
+        with:
+          fetch-depth: 0
+
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.ssh_private_key }}
-      
+
       - name: Add Server to Known Hosts
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -H -p ${{ secrets.remote_port || '22' }} ${{ secrets.remote_host }} >> ~/.ssh/known_hosts
-    
-      - uses: chrnorm/deployment-action@v2
-        name: Create GitHub Deployment
+
+      - name: Create GitHub Deployment
+        uses: chrnorm/deployment-action@v2
         id: github_deployment
+        continue-on-error: true
         with:
           token: '${{ github.token }}'
           environment-url: ${{ inputs.site_url }}
           environment: ${{ inputs.environment }}
-      
+
       - name: Record Deployment Start Time
         id: deployment_timer
         run: |
           echo "start_time=$(date +%s)" >> $GITHUB_OUTPUT
           echo "🕐 Deployment started at $(date '+%Y-%m-%d %H:%M:%S %Z')"
-      
+
+      - name: Download Previous Manifest
+        id: prev_manifest
+        run: |
+          LOCAL_OLD="$RUNNER_TEMP/bm-manifest-old.txt"
+          if ssh -p ${{ secrets.remote_port || '22' }} \
+               ${{ secrets.remote_user }}@${{ secrets.remote_host }} \
+               "test -f '${{ secrets.remote_path }}/.bm-manifest' && cat '${{ secrets.remote_path }}/.bm-manifest'" \
+               > "$LOCAL_OLD" 2>/dev/null; then
+            echo "Previous manifest found: $(wc -l < "$LOCAL_OLD") entries"
+            echo "manifest_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "No previous manifest found (first deployment or manifest missing)."
+            touch "$LOCAL_OLD"
+            echo "manifest_exists=false" >> $GITHUB_OUTPUT
+          fi
+          echo "old_manifest_path=$LOCAL_OLD" >> $GITHUB_OUTPUT
+
+      - name: Generate New Manifest
+        id: new_manifest
+        run: |
+          LOCAL_NEW="$RUNNER_TEMP/bm-manifest-new.txt"
+
+          # Build manifest from tracked files, filtered to mirror rsync excludes
+          LC_ALL=C git ls-files | grep -vE \
+            '^\.git/|^node_modules/|^\.github/|^\.gitignore$|^deploy\.sh$|^wp-config\.php$|^wp-content/uploads/|^\.htaccess$|^\.claude/|\.md$|^\.bm-manifest$|^\.devcontainer/' \
+            | LC_ALL=C sort > "$LOCAL_NEW"
+
+          # Apply any custom exclude_patterns input
+          if [ -n "${{ inputs.exclude_patterns }}" ]; then
+            IFS=',' read -ra PATTERNS <<< "${{ inputs.exclude_patterns }}"
+            for pattern in "${PATTERNS[@]}"; do
+              ESCAPED=$(echo "$pattern" | sed 's|\*|.*|g')
+              LC_ALL=C grep -vE "$ESCAPED" "$LOCAL_NEW" > "$LOCAL_NEW.tmp" && mv "$LOCAL_NEW.tmp" "$LOCAL_NEW" || true
+            done
+          fi
+
+          echo "New manifest: $(wc -l < "$LOCAL_NEW") entries"
+          echo "new_manifest_path=$LOCAL_NEW" >> $GITHUB_OUTPUT
+
       - name: Enable Maintenance Mode
         run: |
           echo "Enabling maintenance mode..."
           ssh -p ${{ secrets.remote_port || '22' }} ${{ secrets.remote_user }}@${{ secrets.remote_host }} "echo '<?php \$upgrading = time(); ?>' > ${{ secrets.remote_path }}/.maintenance"
           echo "✓ Maintenance mode enabled"
-      
+
       - name: Build rsync Exclude Parameters
         id: rsync-excludes
         run: |
-          # Base excludes
-          EXCLUDES="--exclude=.git/ --exclude=node_modules/ --exclude=.github/ --exclude=.gitignore --exclude=deploy.sh --exclude=wp-config.php --exclude=wp-content/uploads/ --exclude=.htaccess --exclude=.claude/ --exclude='*.md'"
-          
+          # Base excludes — no --delete flag is used; rsync only adds/overwrites, never removes
+          EXCLUDES="--exclude=.git/ --exclude=node_modules/ --exclude=.github/ --exclude=.gitignore --exclude=deploy.sh --exclude=wp-config.php --exclude=wp-content/uploads/ --exclude=.htaccess --exclude=.claude/ --exclude='*.md' --exclude=.bm-manifest --exclude=.devcontainer/"
+
           # Add custom excludes if provided
           if [ -n "${{ inputs.exclude_patterns }}" ]; then
             IFS=',' read -ra PATTERNS <<< "${{ inputs.exclude_patterns }}"
@@ -104,9 +137,9 @@ jobs:
               EXCLUDES="$EXCLUDES --exclude=${pattern}"
             done
           fi
-          
+
           echo "excludes=$EXCLUDES" >> $GITHUB_OUTPUT
-      
+
       - name: Sync Files to Deployment Target
         run: |
           echo "Syncing files to deployment target..."
@@ -120,6 +153,65 @@ jobs:
             ./ ${{ secrets.remote_user }}@${{ secrets.remote_host }}:${{ secrets.remote_path }}/
           echo "✓ Files synced"
 
+      - name: Clean Orphaned Files
+        run: |
+          OLD="${{ steps.prev_manifest.outputs.old_manifest_path }}"
+          NEW="${{ steps.new_manifest.outputs.new_manifest_path }}"
+
+          if [ "${{ steps.prev_manifest.outputs.manifest_exists }}" != "true" ]; then
+            echo "No previous manifest — skipping orphan cleanup."
+            exit 0
+          fi
+
+          # Files in old manifest but not in new = previously deployed, now removed from repo
+          ORPHANS="$RUNNER_TEMP/bm-orphans.txt"
+          comm -23 <(LC_ALL=C sort "$OLD") <(LC_ALL=C sort "$NEW") > "$ORPHANS"
+          COUNT=$(wc -l < "$ORPHANS")
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "No orphaned files to clean up."
+            exit 0
+          fi
+
+          echo "Orphaned files to remove ($COUNT):"
+          cat "$ORPHANS"
+
+          # Protected paths that must never be deleted
+          PROTECTED="^wp-config\.php$|^\.htaccess$|^wp-content/uploads/|^\.bm-manifest$"
+
+          # Build batched remote delete command
+          REMOTE_CMD=""
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            # Skip path traversal attempts
+            echo "$f" | grep -q '\.\.' && { echo "Skipping suspicious path: $f"; continue; }
+            echo "$f" | grep -qE "$PROTECTED" && { echo "Skipping protected path: $f"; continue; }
+            REMOTE_CMD="$REMOTE_CMD rm -f '${{ secrets.remote_path }}/$f' ;"
+          done < "$ORPHANS"
+
+          if [ -n "$REMOTE_CMD" ]; then
+            ssh -p ${{ secrets.remote_port || '22' }} \
+              ${{ secrets.remote_user }}@${{ secrets.remote_host }} "$REMOTE_CMD"
+            echo "✓ Orphaned files removed"
+          fi
+
+          # Clean up empty directories left behind (protect uploads, cache, web root)
+          ssh -p ${{ secrets.remote_port || '22' }} \
+            ${{ secrets.remote_user }}@${{ secrets.remote_host }} \
+            "find '${{ secrets.remote_path }}' -mindepth 1 -maxdepth 10 -type d -empty \
+              -not -path '${{ secrets.remote_path }}/wp-content/uploads*' \
+              -not -path '${{ secrets.remote_path }}/wp-content/cache*' \
+              -delete 2>/dev/null || true"
+          echo "✓ Empty directory cleanup complete"
+
+      - name: Upload New Manifest
+        run: |
+          NEW="${{ steps.new_manifest.outputs.new_manifest_path }}"
+          scp -P ${{ secrets.remote_port || '22' }} \
+            "$NEW" \
+            ${{ secrets.remote_user }}@${{ secrets.remote_host }}:${{ secrets.remote_path }}/.bm-manifest
+          echo "✓ Manifest uploaded: $(wc -l < "$NEW") entries"
+
       - name: Disable Maintenance Mode
         if: always()
         run: |
@@ -129,83 +221,100 @@ jobs:
 
       - name: Flush Caches
         if: success()
+        continue-on-error: true
         run: |
           echo "Flushing WordPress caches..."
           ssh -p ${{ secrets.remote_port || '22' }} ${{ secrets.remote_user }}@${{ secrets.remote_host }} "cd ${{ secrets.remote_path }} && wp cache flush --allow-root && wp rewrite flush --allow-root"
           echo "✓ Caches flushed"
-      
+
       - name: Post-Deployment Health Check
         if: success()
+        continue-on-error: true
         run: |
           echo "Running health check on ${{ inputs.site_url }}..."
-          
-          # Wait a moment for services to stabilize
-          sleep 3
-          
-          # Make request and capture HTTP status
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L --max-time 30 "${{ inputs.site_url }}")
-          
-          echo "HTTP Status: $HTTP_STATUS"
-          
-          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 400 ]; then
-            echo "✓ Health check passed! Site is responding with status $HTTP_STATUS"
-          else
-            echo "⚠ Health check warning: Site returned status $HTTP_STATUS"
-            echo "This may indicate an issue, but deployment will continue."
+
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+          MAX=3
+          ATTEMPT=0
+          PASSED=false
+
+          while [ $ATTEMPT -lt $MAX ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "Attempt $ATTEMPT of $MAX..."
+
+            HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
+              -L --max-time 30 \
+              -A "$UA" \
+              "${{ inputs.site_url }}" 2>/dev/null) || HTTP="000"
+
+            echo "HTTP Status: $HTTP"
+
+            if [ "$HTTP" -ge 200 ] && [ "$HTTP" -lt 400 ]; then
+              echo "✓ Health check passed (attempt $ATTEMPT, HTTP $HTTP)"
+              PASSED=true
+              break
+            fi
+
+            [ $ATTEMPT -lt $MAX ] && { echo "Retrying in 5s..."; sleep 5; }
+          done
+
+          if [ "$PASSED" = "false" ]; then
+            echo "⚠ Health check failed after $MAX attempts (last status: $HTTP)"
+            echo "The site may have a firewall blocking requests or be returning errors."
+            echo "Deployment will continue — review the site manually."
           fi
 
       - name: Delete Feature Branch After Staging Deployment
         if: success() && inputs.environment == 'staging'
+        continue-on-error: true
         run: |
           # Get the source branch from the merge commit
-          BRANCH_NAME=$(git log -1 --pretty=%B | grep -oP "Merge pull request #\d+ from [^/]+/\K.*" || echo "")
-          
-          # Fallback: try to get from commit message in different merge formats
+          BRANCH_NAME=$(git log -1 --pretty=%B | grep -oP "Merge pull request #\d+ from [^/]+/\K.*" || true)
+
+          # Fallback: try alternate merge commit format
           if [ -z "$BRANCH_NAME" ]; then
-            BRANCH_NAME=$(git log -1 --pretty=%B | grep -oP "Merge branch '\K[^']+")
+            BRANCH_NAME=$(git log -1 --pretty=%B | grep -oP "Merge branch '\K[^']+" || true)
           fi
-          
+
           if [ -z "$BRANCH_NAME" ]; then
-            echo "⚠ Could not determine source branch from merge commit"
+            echo "⚠ Could not determine source branch from merge commit. Skipping."
             exit 0
           fi
-          
-          echo "Source branch to potentially delete: $BRANCH_NAME"
-          
+
+          echo "Source branch candidate: $BRANCH_NAME"
+
           # Don't delete protected branches
           case "$BRANCH_NAME" in
-            main|master|develop|rc/*)
+            main|master|develop|staging|production|prod|rc/*)
               echo "⚠ Skipping deletion of protected branch: $BRANCH_NAME"
               exit 0
               ;;
           esac
-          
+
           # Check if branch exists remotely
           if git ls-remote --exit-code --heads origin "$BRANCH_NAME" > /dev/null 2>&1; then
-            echo "Branch $BRANCH_NAME exists remotely"
-            
-            # Delete the branch
             if git push origin --delete "$BRANCH_NAME"; then
-              echo "✓ Successfully deleted branch: $BRANCH_NAME"
+              echo "✓ Deleted branch: $BRANCH_NAME"
             else
-              echo "✗ Failed to delete branch: $BRANCH_NAME"
-              exit 1
+              echo "⚠ Could not delete branch $BRANCH_NAME — may require manual cleanup."
             fi
           else
-            echo "⚠ Branch $BRANCH_NAME does not exist remotely (may have been already deleted)"
+            echo "⚠ Branch $BRANCH_NAME not found remotely (may have been already deleted)."
           fi
 
       - name: Successful GitHub Deployment
         if: success()
+        continue-on-error: true
         uses: chrnorm/deployment-status@v2
         with:
           token: '${{ github.token }}'
           environment-url: ${{ steps.github_deployment.outputs.environment_url }}
           deployment-id: ${{ steps.github_deployment.outputs.deployment_id }}
           state: 'success'
-      
+
       - name: Failed GitHub Deployment
         if: failure()
+        continue-on-error: true
         uses: chrnorm/deployment-status@v2
         with:
           token: '${{ github.token }}'
@@ -213,63 +322,9 @@ jobs:
           deployment-id: ${{ steps.github_deployment.outputs.deployment_id }}
           state: 'failure'
 
-      - name: Slack Failure Notification
-        id: slack_failure
-        if: failure()
-        uses: slackapi/slack-github-action@v1.25.0
-        with:
-          channel-id: ${{ secrets.slack_channel_id }}
-          payload: |
-            {
-              "text":"🤯 Failed ${{ inputs.environment }} deployment",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*🤯 Failed ${{ inputs.environment }} deployment* | Looks like something went wrong with the deployment. Check the logs."
-                  }
-                }
-              ]
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.slack_bot_token }}
-
-      - name: Slack Success Notification
-        id: slack_success
-        if: success()
-        uses: slackapi/slack-github-action@v1.25.0
-        with:
-          channel-id: ${{ secrets.slack_channel_id }}
-          payload: |
-            {
-              "text":"🚀 ${{ inputs.environment }} deployment successful",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*🚀 ${{ inputs.environment }} deployment successful* | We had a successful deployment to ${{ inputs.environment }} from ${{ github.triggering_actor }}!"
-                  },
-                  "accessory": {
-                    "type": "button",
-                    "text": {
-                      "type": "plain_text",
-                      "text": "🔗 View ${{ inputs.environment }}",
-                      "emoji": true
-                    },
-                    "value": "click_me_123",
-                    "url": "${{ inputs.site_url }}",
-                    "action_id": "button-action"
-                  }
-                }
-              ]
-            }
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.slack_bot_token }}
-      
       - name: Deployment Summary
         if: always()
+        continue-on-error: true
         run: |
           # Calculate deployment duration
           END_TIME=$(date +%s)
@@ -277,7 +332,7 @@ jobs:
           DURATION=$((END_TIME - START_TIME))
           MINUTES=$((DURATION / 60))
           SECONDS=$((DURATION % 60))
-          
+
           echo "================================"
           echo "📊 DEPLOYMENT SUMMARY"
           echo "================================"
