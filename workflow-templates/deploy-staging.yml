@@ -12,7 +12,7 @@ jobs:
     concurrency:
       group: staging-deploy
       cancel-in-progress: false
-    if: github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
     uses: builtmighty/.github/.github/workflows/deploy.yml@main
     with:
       site_url: ${{ vars.STAGING_URL }}
