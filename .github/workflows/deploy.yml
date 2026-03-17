@@ -82,13 +82,26 @@ jobs:
           ssh-keyscan -H -p "$REMOTE_PORT" "$REMOTE_HOST" >> ~/.ssh/known_hosts
 
       - name: Create GitHub Deployment
-        uses: chrnorm/deployment-action@v2.0.7
+        uses: actions/github-script@v7
         id: github_deployment
         continue-on-error: true
         with:
-          token: '${{ github.token }}'
-          environment-url: ${{ inputs.site_url }}
-          environment: ${{ inputs.environment }}
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.ref,
+              environment: '${{ inputs.environment }}',
+              auto_merge: false,
+              required_contexts: [],
+              description: 'Deploying to ${{ inputs.environment }}'
+            });
+            if (deployment.status === 201) {
+              core.setOutput('deployment_id', deployment.data.id);
+              core.setOutput('environment_url', '${{ inputs.site_url }}');
+            } else {
+              core.warning('Deployment creation returned unexpected status: ' + deployment.status);
+            }
 
       - name: Record Deployment Start Time
         id: deployment_timer
@@ -339,24 +352,34 @@ jobs:
           fi
 
       - name: Successful GitHub Deployment
-        if: success()
+        if: success() && steps.github_deployment.outputs.deployment_id
         continue-on-error: true
-        uses: chrnorm/deployment-status@v2.0.3
+        uses: actions/github-script@v7
         with:
-          token: '${{ github.token }}'
-          environment-url: ${{ steps.github_deployment.outputs.environment_url }}
-          deployment-id: ${{ steps.github_deployment.outputs.deployment_id }}
-          state: 'success'
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ steps.github_deployment.outputs.deployment_id }},
+              state: 'success',
+              environment_url: '${{ inputs.site_url }}',
+              description: 'Deployment succeeded'
+            });
 
       - name: Failed GitHub Deployment
-        if: failure()
+        if: failure() && steps.github_deployment.outputs.deployment_id
         continue-on-error: true
-        uses: chrnorm/deployment-status@v2.0.3
+        uses: actions/github-script@v7
         with:
-          token: '${{ github.token }}'
-          environment-url: ${{ steps.github_deployment.outputs.environment_url }}
-          deployment-id: ${{ steps.github_deployment.outputs.deployment_id }}
-          state: 'failure'
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ steps.github_deployment.outputs.deployment_id }},
+              state: 'failure',
+              environment_url: '${{ inputs.site_url }}',
+              description: 'Deployment failed'
+            });
 
       - name: Deployment Summary
         if: always()
