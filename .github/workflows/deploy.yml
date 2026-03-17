@@ -82,7 +82,7 @@ jobs:
           ssh-keyscan -H -p "$REMOTE_PORT" "$REMOTE_HOST" >> ~/.ssh/known_hosts
 
       - name: Create GitHub Deployment
-        uses: chrnorm/deployment-action@v2.0
+        uses: chrnorm/deployment-action@v2.0.7
         id: github_deployment
         continue-on-error: true
         with:
@@ -341,7 +341,7 @@ jobs:
       - name: Successful GitHub Deployment
         if: success()
         continue-on-error: true
-        uses: chrnorm/deployment-status@v2.0
+        uses: chrnorm/deployment-status@v2.0.3
         with:
           token: '${{ github.token }}'
           environment-url: ${{ steps.github_deployment.outputs.environment_url }}
@@ -351,7 +351,7 @@ jobs:
       - name: Failed GitHub Deployment
         if: failure()
         continue-on-error: true
-        uses: chrnorm/deployment-status@v2.0
+        uses: chrnorm/deployment-status@v2.0.3
         with:
           token: '${{ github.token }}'
           environment-url: ${{ steps.github_deployment.outputs.environment_url }}
