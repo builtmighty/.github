@@ -82,7 +82,7 @@ jobs:
           ssh-keyscan -H -p "$REMOTE_PORT" "$REMOTE_HOST" >> ~/.ssh/known_hosts
 
       - name: Create GitHub Deployment
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         id: github_deployment
         continue-on-error: true
         with:
@@ -354,7 +354,7 @@ jobs:
       - name: Successful GitHub Deployment
         if: success() && steps.github_deployment.outputs.deployment_id
         continue-on-error: true
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             await github.rest.repos.createDeploymentStatus({
@@ -369,7 +369,7 @@ jobs:
       - name: Failed GitHub Deployment
         if: failure() && steps.github_deployment.outputs.deployment_id
         continue-on-error: true
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             await github.rest.repos.createDeploymentStatus({
