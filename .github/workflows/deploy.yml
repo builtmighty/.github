@@ -18,6 +18,11 @@ on:
         required: false
         type: string
         default: ''
+      strict_health_check:
+        description: 'Fail the deployment if the health check does not pass'
+        required: false
+        type: boolean
+        default: false
     secrets:
       remote_host:
         description: 'Server hostname'
@@ -48,24 +53,36 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    # Job-level env prevents shell injection from secret/input interpolation.
+    # All run steps reference these env vars instead of inline ${{ }} expressions.
+    env:
+      REMOTE_HOST: ${{ secrets.remote_host }}
+      REMOTE_USER: ${{ secrets.remote_user }}
+      REMOTE_PATH: ${{ secrets.remote_path }}
+      REMOTE_PORT: ${{ secrets.remote_port || '22' }}
+      SITE_URL: ${{ inputs.site_url }}
+      ENVIRONMENT: ${{ inputs.environment }}
+      EXCLUDE_PATTERNS: ${{ inputs.exclude_patterns }}
+
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.9.0
+        uses: webfactory/ssh-agent@v0.10.0
         with:
           ssh-private-key: ${{ secrets.ssh_private_key }}
 
       - name: Add Server to Known Hosts
         run: |
+          set -euo pipefail
           mkdir -p ~/.ssh
-          ssh-keyscan -H -p ${{ secrets.remote_port || '22' }} ${{ secrets.remote_host }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H -p "$REMOTE_PORT" "$REMOTE_HOST" >> ~/.ssh/known_hosts
 
       - name: Create GitHub Deployment
-        uses: chrnorm/deployment-action@v2
+        uses: chrnorm/deployment-action@v2.0.7
         id: github_deployment
         continue-on-error: true
         with:
@@ -76,29 +93,32 @@ jobs:
       - name: Record Deployment Start Time
         id: deployment_timer
         run: |
-          echo "start_time=$(date +%s)" >> $GITHUB_OUTPUT
-          echo "🕐 Deployment started at $(date '+%Y-%m-%d %H:%M:%S %Z')"
+          set -euo pipefail
+          echo "start_time=$(date +%s)" >> "$GITHUB_OUTPUT"
+          echo "Deployment started at $(date '+%Y-%m-%d %H:%M:%S %Z')"
 
       - name: Download Previous Manifest
         id: prev_manifest
         run: |
+          set -euo pipefail
           LOCAL_OLD="$RUNNER_TEMP/bm-manifest-old.txt"
-          if ssh -p ${{ secrets.remote_port || '22' }} \
-               ${{ secrets.remote_user }}@${{ secrets.remote_host }} \
-               "test -f '${{ secrets.remote_path }}/.bm-manifest' && cat '${{ secrets.remote_path }}/.bm-manifest'" \
+          if ssh -p "$REMOTE_PORT" \
+               "$REMOTE_USER@$REMOTE_HOST" \
+               "test -f '${REMOTE_PATH}/.bm-manifest' && cat '${REMOTE_PATH}/.bm-manifest'" \
                > "$LOCAL_OLD" 2>/dev/null; then
             echo "Previous manifest found: $(wc -l < "$LOCAL_OLD") entries"
-            echo "manifest_exists=true" >> $GITHUB_OUTPUT
+            echo "manifest_exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "No previous manifest found (first deployment or manifest missing)."
             touch "$LOCAL_OLD"
-            echo "manifest_exists=false" >> $GITHUB_OUTPUT
+            echo "manifest_exists=false" >> "$GITHUB_OUTPUT"
           fi
-          echo "old_manifest_path=$LOCAL_OLD" >> $GITHUB_OUTPUT
+          echo "old_manifest_path=$LOCAL_OLD" >> "$GITHUB_OUTPUT"
 
       - name: Generate New Manifest
         id: new_manifest
         run: |
+          set -euo pipefail
           LOCAL_NEW="$RUNNER_TEMP/bm-manifest-new.txt"
 
           # Build manifest from tracked files, filtered to mirror rsync excludes
@@ -107,8 +127,8 @@ jobs:
             | LC_ALL=C sort > "$LOCAL_NEW"
 
           # Apply any custom exclude_patterns input
-          if [ -n "${{ inputs.exclude_patterns }}" ]; then
-            IFS=',' read -ra PATTERNS <<< "${{ inputs.exclude_patterns }}"
+          if [ -n "$EXCLUDE_PATTERNS" ]; then
+            IFS=',' read -ra PATTERNS <<< "$EXCLUDE_PATTERNS"
             for pattern in "${PATTERNS[@]}"; do
               ESCAPED=$(echo "$pattern" | sed 's|\*|.*|g')
               LC_ALL=C grep -vE "$ESCAPED" "$LOCAL_NEW" > "$LOCAL_NEW.tmp" && mv "$LOCAL_NEW.tmp" "$LOCAL_NEW" || true
@@ -116,32 +136,36 @@ jobs:
           fi
 
           echo "New manifest: $(wc -l < "$LOCAL_NEW") entries"
-          echo "new_manifest_path=$LOCAL_NEW" >> $GITHUB_OUTPUT
+          echo "new_manifest_path=$LOCAL_NEW" >> "$GITHUB_OUTPUT"
 
       - name: Enable Maintenance Mode
         run: |
+          set -euo pipefail
           echo "Enabling maintenance mode..."
-          ssh -p ${{ secrets.remote_port || '22' }} ${{ secrets.remote_user }}@${{ secrets.remote_host }} "echo '<?php \$upgrading = time(); ?>' > ${{ secrets.remote_path }}/.maintenance"
-          echo "✓ Maintenance mode enabled"
+          ssh -p "$REMOTE_PORT" "$REMOTE_USER@$REMOTE_HOST" \
+            "echo '<?php \$upgrading = time(); ?>' > '${REMOTE_PATH}/.maintenance'"
+          echo "Maintenance mode enabled"
 
       - name: Build rsync Exclude Parameters
         id: rsync-excludes
         run: |
+          set -euo pipefail
           # Base excludes — no --delete flag is used; rsync only adds/overwrites, never removes
           EXCLUDES="--exclude=.git/ --exclude=node_modules/ --exclude=.github/ --exclude=.gitignore --exclude=deploy.sh --exclude=wp-config.php --exclude=wp-content/uploads/ --exclude=.htaccess --exclude=.claude/ --exclude='*.md' --exclude=.bm-manifest --exclude=.devcontainer/"
 
           # Add custom excludes if provided
-          if [ -n "${{ inputs.exclude_patterns }}" ]; then
-            IFS=',' read -ra PATTERNS <<< "${{ inputs.exclude_patterns }}"
+          if [ -n "$EXCLUDE_PATTERNS" ]; then
+            IFS=',' read -ra PATTERNS <<< "$EXCLUDE_PATTERNS"
             for pattern in "${PATTERNS[@]}"; do
               EXCLUDES="$EXCLUDES --exclude=${pattern}"
             done
           fi
 
-          echo "excludes=$EXCLUDES" >> $GITHUB_OUTPUT
+          echo "excludes=$EXCLUDES" >> "$GITHUB_OUTPUT"
 
       - name: Sync Files to Deployment Target
         run: |
+          set -euo pipefail
           echo "Syncing files to deployment target..."
           rsync -avz \
             --checksum \
@@ -149,12 +173,13 @@ jobs:
             --stats \
             --timeout=120 \
             ${{ steps.rsync-excludes.outputs.excludes }} \
-            -e "ssh -p ${{ secrets.remote_port || '22' }}" \
-            ./ ${{ secrets.remote_user }}@${{ secrets.remote_host }}:${{ secrets.remote_path }}/
-          echo "✓ Files synced"
+            -e "ssh -p $REMOTE_PORT" \
+            ./ "$REMOTE_USER@$REMOTE_HOST:$REMOTE_PATH/"
+          echo "Files synced"
 
       - name: Clean Orphaned Files
         run: |
+          set -euo pipefail
           OLD="${{ steps.prev_manifest.outputs.old_manifest_path }}"
           NEW="${{ steps.new_manifest.outputs.new_manifest_path }}"
 
@@ -179,59 +204,68 @@ jobs:
           # Protected paths that must never be deleted
           PROTECTED="^wp-config\.php$|^\.htaccess$|^wp-content/uploads/|^\.bm-manifest$"
 
-          # Build batched remote delete command
-          REMOTE_CMD=""
-          while IFS= read -r f; do
-            [ -z "$f" ] && continue
-            # Skip path traversal attempts
-            echo "$f" | grep -q '\.\.' && { echo "Skipping suspicious path: $f"; continue; }
-            echo "$f" | grep -qE "$PROTECTED" && { echo "Skipping protected path: $f"; continue; }
-            REMOTE_CMD="$REMOTE_CMD rm -f '${{ secrets.remote_path }}/$f' ;"
-          done < "$ORPHANS"
-
-          if [ -n "$REMOTE_CMD" ]; then
-            ssh -p ${{ secrets.remote_port || '22' }} \
-              ${{ secrets.remote_user }}@${{ secrets.remote_host }} "$REMOTE_CMD"
-            echo "✓ Orphaned files removed"
-          fi
+          # Filter out protected and suspicious paths, then pipe to remote xargs for safe batch deletion.
+          # This avoids ARG_MAX limits that the previous single-command approach could hit.
+          grep -vE "$PROTECTED" "$ORPHANS" \
+            | grep -v '\.\.' \
+            | sed "s|^|${REMOTE_PATH}/|" \
+            | ssh -p "$REMOTE_PORT" "$REMOTE_USER@$REMOTE_HOST" "xargs -d '\\n' rm -f --"
+          echo "Orphaned files removed"
 
           # Clean up empty directories left behind (protect uploads, cache, web root)
-          ssh -p ${{ secrets.remote_port || '22' }} \
-            ${{ secrets.remote_user }}@${{ secrets.remote_host }} \
-            "find '${{ secrets.remote_path }}' -mindepth 1 -maxdepth 10 -type d -empty \
-              -not -path '${{ secrets.remote_path }}/wp-content/uploads*' \
-              -not -path '${{ secrets.remote_path }}/wp-content/cache*' \
+          ssh -p "$REMOTE_PORT" "$REMOTE_USER@$REMOTE_HOST" \
+            "find '${REMOTE_PATH}' -mindepth 1 -maxdepth 10 -type d -empty \
+              -not -path '${REMOTE_PATH}/wp-content/uploads*' \
+              -not -path '${REMOTE_PATH}/wp-content/cache*' \
               -delete 2>/dev/null || true"
-          echo "✓ Empty directory cleanup complete"
+          echo "Empty directory cleanup complete"
 
       - name: Upload New Manifest
         run: |
+          set -euo pipefail
           NEW="${{ steps.new_manifest.outputs.new_manifest_path }}"
-          scp -P ${{ secrets.remote_port || '22' }} \
+          scp -P "$REMOTE_PORT" \
             "$NEW" \
-            ${{ secrets.remote_user }}@${{ secrets.remote_host }}:${{ secrets.remote_path }}/.bm-manifest
-          echo "✓ Manifest uploaded: $(wc -l < "$NEW") entries"
+            "$REMOTE_USER@$REMOTE_HOST:$REMOTE_PATH/.bm-manifest"
+          echo "Manifest uploaded: $(wc -l < "$NEW") entries"
 
       - name: Disable Maintenance Mode
         if: always()
         run: |
+          set -euo pipefail
           echo "Disabling maintenance mode..."
-          ssh -p ${{ secrets.remote_port || '22' }} ${{ secrets.remote_user }}@${{ secrets.remote_host }} "rm -f ${{ secrets.remote_path }}/.maintenance && cd ${{ secrets.remote_path }} && wp core check-update --force-check --allow-root"
-          echo "✓ Maintenance mode disabled"
+          MAX_RETRIES=3
+          ATTEMPT=0
+          while [ $ATTEMPT -lt $MAX_RETRIES ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            if ssh -p "$REMOTE_PORT" "$REMOTE_USER@$REMOTE_HOST" \
+              "rm -f '${REMOTE_PATH}/.maintenance' && cd '${REMOTE_PATH}' && wp core check-update --force-check --allow-root"; then
+              echo "Maintenance mode disabled"
+              exit 0
+            fi
+            echo "Attempt $ATTEMPT/$MAX_RETRIES failed. Retrying in 5s..."
+            sleep 5
+          done
+          echo "WARNING: Failed to disable maintenance mode after $MAX_RETRIES attempts!"
+          echo "Manual intervention required: rm ${REMOTE_PATH}/.maintenance"
+          exit 1
 
       - name: Flush Caches
         if: success()
         continue-on-error: true
         run: |
+          set -euo pipefail
           echo "Flushing WordPress caches..."
-          ssh -p ${{ secrets.remote_port || '22' }} ${{ secrets.remote_user }}@${{ secrets.remote_host }} "cd ${{ secrets.remote_path }} && wp cache flush --allow-root && wp rewrite flush --allow-root"
-          echo "✓ Caches flushed"
+          ssh -p "$REMOTE_PORT" "$REMOTE_USER@$REMOTE_HOST" \
+            "cd '${REMOTE_PATH}' && wp cache flush --allow-root && wp rewrite flush --allow-root"
+          echo "Caches flushed"
 
       - name: Post-Deployment Health Check
         if: success()
-        continue-on-error: true
+        continue-on-error: ${{ !inputs.strict_health_check }}
         run: |
-          echo "Running health check on ${{ inputs.site_url }}..."
+          set -euo pipefail
+          echo "Running health check on $SITE_URL..."
 
           UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
           MAX=3
@@ -245,12 +279,12 @@ jobs:
             HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
               -L --max-time 30 \
               -A "$UA" \
-              "${{ inputs.site_url }}" 2>/dev/null) || HTTP="000"
+              "$SITE_URL" 2>/dev/null) || HTTP="000"
 
             echo "HTTP Status: $HTTP"
 
             if [ "$HTTP" -ge 200 ] && [ "$HTTP" -lt 400 ]; then
-              echo "✓ Health check passed (attempt $ATTEMPT, HTTP $HTTP)"
+              echo "Health check passed (attempt $ATTEMPT, HTTP $HTTP)"
               PASSED=true
               break
             fi
@@ -259,15 +293,17 @@ jobs:
           done
 
           if [ "$PASSED" = "false" ]; then
-            echo "⚠ Health check failed after $MAX attempts (last status: $HTTP)"
+            echo "WARNING: Health check failed after $MAX attempts (last status: $HTTP)"
             echo "The site may have a firewall blocking requests or be returning errors."
             echo "Deployment will continue — review the site manually."
+            exit 1
           fi
 
       - name: Delete Feature Branch After Staging Deployment
         if: success() && inputs.environment == 'staging'
         continue-on-error: true
         run: |
+          set -euo pipefail
           # Get the source branch from the merge commit
           BRANCH_NAME=$(git log -1 --pretty=%B | grep -oP "Merge pull request #\d+ from [^/]+/\K.*" || true)
 
@@ -277,7 +313,7 @@ jobs:
           fi
 
           if [ -z "$BRANCH_NAME" ]; then
-            echo "⚠ Could not determine source branch from merge commit. Skipping."
+            echo "Could not determine source branch from merge commit. Skipping."
             exit 0
           fi
 
@@ -286,7 +322,7 @@ jobs:
           # Don't delete protected branches
           case "$BRANCH_NAME" in
             main|master|develop|staging|production|prod|rc/*)
-              echo "⚠ Skipping deletion of protected branch: $BRANCH_NAME"
+              echo "Skipping deletion of protected branch: $BRANCH_NAME"
               exit 0
               ;;
           esac
@@ -294,18 +330,18 @@ jobs:
           # Check if branch exists remotely
           if git ls-remote --exit-code --heads origin "$BRANCH_NAME" > /dev/null 2>&1; then
             if git push origin --delete "$BRANCH_NAME"; then
-              echo "✓ Deleted branch: $BRANCH_NAME"
+              echo "Deleted branch: $BRANCH_NAME"
             else
-              echo "⚠ Could not delete branch $BRANCH_NAME — may require manual cleanup."
+              echo "Could not delete branch $BRANCH_NAME — may require manual cleanup."
             fi
           else
-            echo "⚠ Branch $BRANCH_NAME not found remotely (may have been already deleted)."
+            echo "Branch $BRANCH_NAME not found remotely (may have been already deleted)."
           fi
 
       - name: Successful GitHub Deployment
         if: success()
         continue-on-error: true
-        uses: chrnorm/deployment-status@v2
+        uses: chrnorm/deployment-status@v2.0.7
         with:
           token: '${{ github.token }}'
           environment-url: ${{ steps.github_deployment.outputs.environment_url }}
@@ -315,7 +351,7 @@ jobs:
       - name: Failed GitHub Deployment
         if: failure()
         continue-on-error: true
-        uses: chrnorm/deployment-status@v2
+        uses: chrnorm/deployment-status@v2.0.7
         with:
           token: '${{ github.token }}'
           environment-url: ${{ steps.github_deployment.outputs.environment_url }}
@@ -334,11 +370,11 @@ jobs:
           SECONDS=$((DURATION % 60))
 
           echo "================================"
-          echo "📊 DEPLOYMENT SUMMARY"
+          echo "DEPLOYMENT SUMMARY"
           echo "================================"
           echo "Status: ${{ job.status }}"
-          echo "Environment: ${{ inputs.environment }}"
-          echo "URL: ${{ inputs.site_url }}"
+          echo "Environment: $ENVIRONMENT"
+          echo "URL: $SITE_URL"
           echo "Duration: ${MINUTES}m ${SECONDS}s"
           echo "Completed at: $(date '+%Y-%m-%d %H:%M:%S %Z')"
           echo "================================"
