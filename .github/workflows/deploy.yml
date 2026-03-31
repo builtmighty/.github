@@ -222,7 +222,7 @@ jobs:
           grep -vE "$PROTECTED" "$ORPHANS" \
             | grep -v '\.\.' \
             | sed "s|^|${REMOTE_PATH}/|" \
-            | ssh -p "$REMOTE_PORT" "$REMOTE_USER@$REMOTE_HOST" "xargs -d '\\n' rm -f --"
+            | ssh -p "$REMOTE_PORT" "$REMOTE_USER@$REMOTE_HOST" "xargs -d '\\n' rm -rf --"
           echo "Orphaned files removed"
 
           # Clean up empty directories left behind (protect uploads, cache, web root)
