@@ -1,7 +1,7 @@
 > [!TIP]
-> <img width="64" height="40" alt="image" src="https://github.com/user-attachments/assets/2c888c95-6811-402f-97d0-fbf1e367b38c" style="max-height:150px" /><br>
-> **Copilot Code Review**
-> Copilot will automatically review your code if you're merging a branch into the `rc/`. Please let it finish before merging. You can view more documentation [📓 here 📓](https://builtmighty.atlassian.net/wiki/spaces/BMH/pages/755793924/Copilot+Code+Review).
+> <img width="40" height="40" alt="image" src="https://github.com/user-attachments/assets/1d17af1f-68a6-4f12-8a99-f5175781b4a0" /><br>
+> **Claude Commit/Pull Request**<br>
+> If you use the commit command [HERE](https://github.com/builtmighty/.builtmighty-claude), in our Claude plugin, then Claude can generate and fill out this pull request for you.
 
 ## What Type of Change is This?
 - [ ] 🐛 Bug fix
